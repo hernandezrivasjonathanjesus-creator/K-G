@@ -76,6 +76,7 @@ async function verificar() {
 
         await cargarInventario();
         await cargarCobranza();
+        await cargarBCV(); // <--- AQUÍ SE CARGA LA TASA DEL BCV
     } catch (e) {
         errBox.textContent = 'Error de conexión';
     }
@@ -221,5 +222,16 @@ async function eliminarVenta(id) {
     if (confirm('¿Eliminar esta venta del sistema?')) {
         await fetch(`/api/cobranza/${id}`, { method: 'DELETE' });
         await cargarCobranza();
+    }
+}
+
+// --- TASA DEL BCV ---
+async function cargarBCV() {
+    try {
+        const res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+        const data = await res.json();
+        document.getElementById('bcv-val').textContent = Number(data.promedio).toFixed(2) + ' Bs';
+    } catch {
+        document.getElementById('bcv-val').textContent = 'N/D';
     }
 }
