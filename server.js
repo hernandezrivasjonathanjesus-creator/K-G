@@ -64,12 +64,23 @@ bot.onText(/\/stock/, async (msg) => {
 app.post('/api/login', async (req, res) => {
   const { empresa, password } = req.body;
   if (!empresa || !password) return res.status(400).json({ ok: false, msg: 'Faltan datos' });
+  
   try {
     const config = await db.prepare('SELECT valor FROM configuracion WHERE clave = ?').get(`pass_${empresa}`);
     const passCorrecta = config ? config.valor : (empresa === 'FEMELY' ? '1234' : '5678');
-    if (passCorrecta === password) return res.json({ ok: true, empresa });
+    
+    if (passCorrecta === password) {
+      return res.json({ ok: true, empresa });
+    }
     return res.status(401).json({ ok: false, msg: 'Contraseña incorrecta' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    // SI LA BASE DE DATOS FALLA, PERMITE ENTRAR CON LA CLAVE POR DEFECTO
+    console.error("Error en DB, usando clave por defecto:", e.message);
+    if (password === '1234') {
+        return res.json({ ok: true, empresa }); 
+    }
+    return res.status(401).json({ ok: false, msg: 'Error de conexión a base de datos' });
+  }
 });
 
 app.post('/api/cambiar-clave', async (req, res) => {
