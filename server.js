@@ -9,9 +9,6 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// ============================================
-// CONFIGURACIÓN DEL BOT
-// ============================================
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || '9163487748:AAHv_6Utv1p-1feY7p_oyAsqfYImfkpKb0U';
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
 
@@ -52,9 +49,6 @@ bot.onText(/\/stock/, (msg) => {
   bot.sendMessage(msg.chat.id, mensaje, { parse_mode: 'Markdown' });
 });
 
-// ============================================
-// API DE LA WEB
-// ============================================
 app.post('/api/login', (req, res) => {
   const { empresa, password } = req.body;
   if (!empresa || !password) return res.status(400).json({ ok: false, msg: 'Faltan datos' });
@@ -75,16 +69,13 @@ app.post('/api/cambiar-clave', (req, res) => {
 });
 
 app.get('/api/inventario/:empresa', (req, res) => {
-  const datos = db.prepare('SELECT * FROM inventario WHERE empresa = ? ORDER BY id DESC').all(req.params.empresa);
-  res.json(datos);
+  res.json(db.prepare('SELECT * FROM inventario WHERE empresa = ? ORDER BY id DESC').all(req.params.empresa));
 });
 
 app.post('/api/inventario', (req, res) => {
   const { empresa, producto, distribuidor, precio, stock } = req.body;
-  try {
-    db.prepare(`INSERT INTO inventario (empresa, producto, distribuidor, precio, stock) VALUES (?, ?, ?, ?, ?)`).run(empresa, producto, distribuidor || '', Number(precio), Number(stock));
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  db.prepare(`INSERT INTO inventario (empresa, producto, distribuidor, precio, stock) VALUES (?, ?, ?, ?, ?)`).run(empresa, producto, distribuidor || '', Number(precio), Number(stock));
+  res.json({ ok: true });
 });
 
 app.delete('/api/inventario/:id', (req, res) => {
@@ -93,23 +84,19 @@ app.delete('/api/inventario/:id', (req, res) => {
 });
 
 app.get('/api/cobranza/:empresa', (req, res) => {
-  const datos = db.prepare('SELECT * FROM cobranza WHERE empresa = ? ORDER BY id DESC').all(req.params.empresa);
-  res.json(datos);
+  res.json(db.prepare('SELECT * FROM cobranza WHERE empresa = ? ORDER BY id DESC').all(req.params.empresa));
 });
 
 app.post('/api/cobranza', (req, res) => {
   const { empresa, cliente, producto, cantidad, precio_unitario, total, cuota1, cuota2, referencia } = req.body;
-  try {
-    const item = db.prepare('SELECT * FROM inventario WHERE id = ? AND empresa = ?').get(producto, empresa);
-    if (!item) return res.status(404).json({ error: 'Producto no encontrado' });
-    if (item.stock < cantidad) return res.status(400).json({ error: 'Stock insuficiente' });
+  const item = db.prepare('SELECT * FROM inventario WHERE id = ? AND empresa = ?').get(producto, empresa);
+  if (!item) return res.status(404).json({ error: 'Producto no encontrado' });
+  if (item.stock < cantidad) return res.status(400).json({ error: 'Stock insuficiente' });
 
-    db.prepare(`INSERT INTO cobranza (empresa, cliente, producto, cantidad, precio_unitario, total, cuota1, cuota2, referencia) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(empresa, cliente, item.producto, Number(cantidad), Number(precio_unitario), Number(total), Number(cuota1), Number(cuota2), referencia || '');
+  db.prepare(`INSERT INTO cobranza (empresa, cliente, producto, cantidad, precio_unitario, total, cuota1, cuota2, referencia) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(empresa, cliente, item.producto, Number(cantidad), Number(precio_unitario), Number(total), Number(cuota1), Number(cuota2), referencia || '');
 
-    db.prepare('UPDATE inventario SET stock = stock - ? WHERE id = ?').run(Number(cantidad), item.id);
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  db.prepare('UPDATE inventario SET stock = stock - ? WHERE id = ?').run(Number(cantidad), item.id);
+  res.json({ ok: true });
 });
 
 app.put('/api/cobranza/:id/pago', (req, res) => {
