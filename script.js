@@ -76,7 +76,7 @@ async function verificar() {
 
         await cargarInventario();
         await cargarCobranza();
-        await cargarBCV(); // <--- AQUÍ SE CARGA LA TASA DEL BCV
+        await cargarBCV();
     } catch (e) {
         errBox.textContent = 'Error de conexión';
     }
@@ -146,7 +146,7 @@ async function cargarCobranza() {
     const tbody = document.querySelector('#t-cob tbody');
     tbody.innerHTML = '';
 
-    if (datos.length === 0) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center">Sin ventas registradas</td></tr>`;
+    if (datos.length === 0) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">Sin ventas registradas</td></tr>`;
 
     datos.forEach(d => {
         const renderCuota = (num, pagada) => {
@@ -171,6 +171,7 @@ async function cargarCobranza() {
                 <td>$${Number(d.total).toFixed(2)}</td>
                 <td>${renderCuota(1, d.pago1)}</td>
                 <td>${renderCuota(2, d.pago2)}</td>
+                <td>${d.referencia || '-'}</td>
                 <td><button onclick="eliminarVenta(${d.id})">🗑️</button></td>
             </tr>
         `;
@@ -201,7 +202,8 @@ document.getElementById('f-cob').addEventListener('submit', async (e) => {
             precio_unitario: precio,
             total: total,
             cuota1: cuota,
-            cuota2: +(total - cuota).toFixed(2)
+            cuota2: +(total - cuota).toFixed(2),
+            referencia: document.getElementById('cref').value.trim()
         })
     });
     e.target.reset();

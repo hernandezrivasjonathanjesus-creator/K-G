@@ -7,7 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 3000; 
 
 app.use(express.json());
-app.use(express.static(__dirname)); // Para que encuentre el index.html en la raíz
+app.use(express.static(__dirname));
 
 // ============================================
 // CONFIGURACIÓN DEL BOT
@@ -102,12 +102,15 @@ app.get('/api/cobranza/:empresa', async (req, res) => {
 });
 
 app.post('/api/cobranza', async (req, res) => {
-  const { empresa, cliente, producto, cantidad, precio_unitario, total, cuota1, cuota2 } = req.body;
+  const { empresa, cliente, producto, cantidad, precio_unitario, total, cuota1, cuota2, referencia } = req.body;
   try {
     const item = await db.prepare('SELECT * FROM inventario WHERE id = ? AND empresa = ?').get(producto, empresa);
     if (!item) return res.status(404).json({ error: 'Producto no encontrado' });
     if (item.stock < cantidad) return res.status(400).json({ error: 'Stock insuficiente' });
-    await db.prepare(`INSERT INTO cobranza (empresa, cliente, producto, cantidad, precio_unitario, total, cuota1, cuota2) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(empresa, cliente, item.producto, Number(cantidad), Number(precio_unitario), Number(total), Number(cuota1), Number(cuota2));
+
+    await db.prepare(`INSERT INTO cobranza (empresa, cliente, producto, cantidad, precio_unitario, total, cuota1, cuota2, referencia) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(empresa, cliente, item.producto, Number(cantidad), Number(precio_unitario), Number(total), Number(cuota1), Number(cuota2), referencia || '');
+
     await db.prepare('UPDATE inventario SET stock = stock - ? WHERE id = ?').run(Number(cantidad), item.id);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }

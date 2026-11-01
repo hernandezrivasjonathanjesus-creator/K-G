@@ -61,9 +61,7 @@
                 </div>
             </div>
             <div class="header-right">
-                <!-- AQUÍ ESTÁ EL RECUADRO DEL BCV -->
                 <div class="bcv-tag">BCV: <span id="bcv-val">...</span></div>
-                
                 <button class="btn-logout" style="background: #38bdf8; color: #0f172a;" onclick="abrirModalClave()">⚙️ Clave</button>
                 <button class="btn-logout" onclick="location.reload()">Salir</button>
             </div>
@@ -101,6 +99,7 @@
                         <input type="text" id="cn" placeholder="Nombre del Cliente" required>
                         <select id="cl" required><option value="">¿Qué lleva?</option></select>
                         <input type="number" id="cc" placeholder="Cant." min="1" value="1" required>
+                        <input type="text" id="cref" placeholder="Ref. Pago Móvil">
                         <button type="submit">Registrar Venta</button>
                     </form>
                     <div class="scroll">
@@ -108,7 +107,7 @@
                             <thead>
                                 <tr>
                                     <th>Cliente</th><th>Producto</th><th>Total $</th>
-                                    <th>Cuota 1 (15 días)</th><th>Cuota 2 (30 días)</th><th>Acción</th>
+                                    <th>Cuota 1 (15 días)</th><th>Cuota 2 (30 días)</th><th>Referencia</th><th>Acción</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
