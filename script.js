@@ -116,21 +116,42 @@ async function cargarInventario() {
     });
 }
 
+// --- GUARDAR PRODUCTO CON MANEJO DE ERRORES ---
 document.getElementById('f-inv').addEventListener('submit', async (e) => {
     e.preventDefault();
-    await fetch('/api/inventario', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            empresa: empresaActual,
-            producto: document.getElementById('in').value.trim(),
-            distribuidor: document.getElementById('id').value.trim(),
-            precio: parseFloat(document.getElementById('ip').value),
-            stock: parseInt(document.getElementById('ic').value)
-        })
-    });
-    e.target.reset();
-    await cargarInventario();
+    
+    const producto = document.getElementById('in').value.trim();
+    const distribuidor = document.getElementById('id').value.trim();
+    const precio = parseFloat(document.getElementById('ip').value);
+    const stock = parseInt(document.getElementById('ic').value);
+
+    try {
+        const res = await fetch('/api/inventario', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                empresa: empresaActual,
+                producto: producto,
+                distribuidor: distribuidor,
+                precio: precio,
+                stock: stock
+            })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            alert('Error al guardar: ' + (data.error || 'Problema de conexión'));
+            return;
+        }
+
+        e.target.reset();
+        await cargarInventario();
+
+    } catch (error) {
+        alert('Error de red: No se pudo conectar con el servidor.');
+        console.error(error);
+    }
 });
 
 async function eliminarInv(id) {

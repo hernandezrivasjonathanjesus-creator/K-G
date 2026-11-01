@@ -61,15 +61,18 @@
                 </div>
             </div>
             <div class="header-right">
-                <div class="bcv-tag">BCV: <span id="bcv-val">...</span></div>
                 <button class="btn-logout" style="background: #38bdf8; color: #0f172a;" onclick="abrirModalClave()">⚙️ Clave</button>
                 <button class="btn-logout" onclick="location.reload()">Salir</button>
             </div>
         </header>
 
-        <nav class="nav-tabs">
-            <button onclick="verPestaña('inv')">📦 Inventario</button>
-            <button onclick="verPestaña('cob')">🤝 Cobranza (2 Cuotas)</button>
+        <!-- BCV MOVIDO AQUÍ, AL LADO DE LAS PESTAÑAS -->
+        <nav class="nav-tabs" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <button onclick="verPestaña('inv')">📦 Inventario</button>
+                <button onclick="verPestaña('cob')">🤝 Cobranza (2 Cuotas)</button>
+            </div>
+            <div class="bcv-tag" style="margin-right: 20px;">BCV: <span id="bcv-val">...</span></div>
         </nav>
 
         <main class="container">
