@@ -11,16 +11,13 @@ const prepare = (sql) => ({
   all: async (...args) => (await db.execute({ sql, args })).rows
 });
 
-// Creamos las tablas
 db.batch([
   `CREATE TABLE IF NOT EXISTS configuracion (clave TEXT PRIMARY KEY, valor TEXT)`,
   `CREATE TABLE IF NOT EXISTS inventario (id INTEGER PRIMARY KEY AUTOINCREMENT, empresa TEXT, producto TEXT, distribuidor TEXT, precio REAL, stock INTEGER, creado TEXT DEFAULT CURRENT_TIMESTAMP)`,
   `CREATE TABLE IF NOT EXISTS cobranza (id INTEGER PRIMARY KEY AUTOINCREMENT, empresa TEXT, cliente TEXT, producto TEXT, cantidad INTEGER, precio_unitario REAL, total REAL, cuota1 REAL, cuota2 REAL, cuota3 REAL DEFAULT 0, pago1 INTEGER DEFAULT 0, pago2 INTEGER DEFAULT 0, pago3 INTEGER DEFAULT 0, fecha TEXT DEFAULT CURRENT_TIMESTAMP)`
 ], "write").catch(console.error);
 
-// Agregamos la columna 'referencia' a la tabla cobranza si no existe
-db.execute(`ALTER TABLE cobranza ADD COLUMN referencia TEXT`).catch(() => {
-  // Si la columna ya existe, no hace nada y evita el error
-});
+// Agregamos la columna 'referencia' si no existe
+db.execute(`ALTER TABLE cobranza ADD COLUMN referencia TEXT`).catch(() => {});
 
 module.exports = { prepare };
