@@ -1,14 +1,15 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-// Detecta si está en Render o en local
-const dbPath = process.env.RENDER 
-    ? '/data/kg.db' 
-    : path.join(__dirname, 'kg.db');
-
+const dbPath = process.env.RENDER ? '/data/kg.db' : path.join(__dirname, 'kg.db');
 const db = new Database(dbPath);
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS configuracion (
+    clave TEXT PRIMARY KEY,
+    valor TEXT
+  );
+
   CREATE TABLE IF NOT EXISTS inventario (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     empresa TEXT NOT NULL,

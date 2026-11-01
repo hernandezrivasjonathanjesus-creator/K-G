@@ -22,6 +22,34 @@ function cambiarFuente(accion) {
     document.documentElement.style.fontSize = `${fuenteActual}px`;
 }
 
+// --- MODAL DE CONTRASEÑA ---
+function abrirModalClave() {
+    document.getElementById('modal-clave').classList.remove('hidden');
+    document.getElementById('empresa-clave-txt').textContent = `Empresa: ${empresaActual}`;
+    document.getElementById('nueva-clave').value = '';
+}
+function cerrarModalClave() {
+    document.getElementById('modal-clave').classList.add('hidden');
+}
+async function guardarClave() {
+    const nueva = document.getElementById('nueva-clave').value;
+    if (nueva.length < 4) return alert('La contraseña debe tener al menos 4 caracteres.');
+    
+    const res = await fetch('/api/cambiar-clave', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empresa: empresaActual, nuevaClave: nueva })
+    });
+    
+    if (res.ok) {
+        alert('¡Contraseña actualizada con éxito!');
+        cerrarModalClave();
+    } else {
+        alert('Error al guardar la contraseña.');
+    }
+}
+
+// --- LOGIN ---
 async function verificar() {
     const empresa = document.getElementById('empresa-select').value;
     const password = document.getElementById('pass').value;

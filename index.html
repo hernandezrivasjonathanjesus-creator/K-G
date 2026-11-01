@@ -7,13 +7,11 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- BOTÓN DE ACCESIBILIDAD FLOTANTE -->
     <button id="btn-accesibilidad" onclick="toggleAccesibilidad()">♿ Accesibilidad</button>
 
-    <!-- PANEL DE ACCESIBILIDAD -->
     <div id="panel-accesibilidad" class="hidden">
         <h4>Colores de la App</h4>
-        <button onclick="cambiarTema('default')">Tema Oscuro (Original)</button>
+        <button onclick="cambiarTema('default')">Tema Oscuro</button>
         <button onclick="cambiarTema('pastel-rosa')">Tema Pastel Rosa 🌸</button>
         <button onclick="cambiarTema('pastel-azul')">Tema Pastel Azul 💧</button>
         <button onclick="cambiarTema('pastel-verde')">Tema Pastel Verde 🌿</button>
@@ -23,7 +21,17 @@
         <button onclick="cambiarFuente(-1)">Disminuir Texto 🔍-</button>
     </div>
 
-    <!-- LOGIN -->
+    <!-- MODAL CAMBIAR CLAVE -->
+    <div id="modal-clave" class="overlay hidden">
+        <div class="login-card">
+            <h2>Cambiar Contraseña</h2>
+            <p id="empresa-clave-txt" style="margin-bottom: 15px; font-weight: bold; color: var(--primary);"></p>
+            <input type="password" id="nueva-clave" placeholder="Nueva Contraseña (mín. 4)">
+            <button onclick="guardarClave()">Guardar Cambios</button>
+            <button onclick="cerrarModalClave()" style="background: #ef4444; color: white; margin-top: 10px;">Cancelar</button>
+        </div>
+    </div>
+
     <div id="login-screen" class="overlay">
         <div class="login-card">
             <video class="logo-main" autoplay loop muted playsinline>
@@ -40,7 +48,6 @@
         </div>
     </div>
 
-    <!-- APP -->
     <div id="app" class="hidden">
         <header class="header">
             <div class="header-left">
@@ -53,6 +60,7 @@
                 </div>
             </div>
             <div class="header-right">
+                <button class="btn-logout" style="background: #38bdf8; color: #0f172a;" onclick="abrirModalClave()">⚙️ Clave</button>
                 <button class="btn-logout" onclick="location.reload()">Salir</button>
             </div>
         </header>
@@ -63,7 +71,6 @@
         </nav>
 
         <main class="container">
-            <!-- INVENTARIO -->
             <section id="sec-inv" class="tab-panel">
                 <div class="card">
                     <h3>Cargar Stock</h3>
@@ -83,7 +90,6 @@
                 </div>
             </section>
 
-            <!-- COBRANZA -->
             <section id="sec-cob" class="tab-panel hidden">
                 <div class="card">
                     <h3>Nueva Venta (Pagos a 15 y 30 días)</h3>
