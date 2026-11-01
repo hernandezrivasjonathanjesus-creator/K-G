@@ -9,35 +9,43 @@
 </head>
 <body>
     <button id="btn-accesibilidad" onclick="toggleAccesibilidad()">♿ Accesibilidad</button>
-
     <div id="panel-accesibilidad" class="hidden">
-        <h4>Colores de la App</h4>
-        <button onclick="cambiarTema('default')">Tema Oscuro</button>
-        <button onclick="cambiarTema('pastel-rosa')">Tema Pastel Rosa 🌸</button>
-        <button onclick="cambiarTema('pastel-azul')">Tema Pastel Azul 💧</button>
-        <button onclick="cambiarTema('pastel-verde')">Tema Pastel Verde 🌿</button>
-        <hr>
-        <h4>Tamaño del Texto</h4>
-        <button onclick="cambiarFuente(1)">Aumentar Texto 🔍+</button>
-        <button onclick="cambiarFuente(-1)">Disminuir Texto 🔍-</button>
+        <h4>Colores</h4>
+        <button onclick="cambiarTema('default')">Oscuro</button>
+        <button onclick="cambiarTema('pastel-rosa')">Rosa 🌸</button>
+        <button onclick="cambiarTema('pastel-azul')">Azul 💧</button>
+        <button onclick="cambiarTema('pastel-verde')">Verde 🌿</button>
+        <hr><h4>Texto</h4>
+        <button onclick="cambiarFuente(1)">Aumentar 🔍+</button>
+        <button onclick="cambiarFuente(-1)">Disminuir 🔍-</button>
     </div>
 
-    <!-- MODAL CAMBIAR CLAVE -->
+    <!-- MODAL CLAVE -->
     <div id="modal-clave" class="overlay hidden">
         <div class="login-card">
             <h2>Cambiar Contraseña</h2>
-            <p id="empresa-clave-txt" style="margin-bottom: 15px; font-weight: bold; color: var(--primary);"></p>
+            <p id="empresa-clave-txt" style="margin-bottom: 15px; color: var(--primary);"></p>
             <input type="password" id="nueva-clave" placeholder="Nueva Contraseña (mín. 4)">
             <button onclick="guardarClave()">Guardar Cambios</button>
             <button onclick="cerrarModalClave()" style="background: #ef4444; color: white; margin-top: 10px;">Cancelar</button>
         </div>
     </div>
 
+    <!-- MODAL ABONO (NUEVO) -->
+    <div id="modal-abono" class="overlay hidden">
+        <div class="login-card">
+            <h2>Registrar Pago</h2>
+            <p id="abono-resta-txt" style="margin-bottom: 15px; font-weight: bold; color: #ef4444;"></p>
+            <input type="number" id="monto-abono" placeholder="Monto Abonado ($)" step="0.01">
+            <input type="text" id="ref-abono" placeholder="Ref. Pago Móvil">
+            <button onclick="guardarAbono()">Guardar Pago</button>
+            <button onclick="cerrarModalAbono()" style="background: #ef4444; color: white; margin-top: 10px;">Cancelar</button>
+        </div>
+    </div>
+
     <div id="login-screen" class="overlay">
         <div class="login-card">
-            <video class="logo-main" autoplay loop muted playsinline>
-                <source src="video.mp4" type="video/mp4">
-            </video>
+            <video class="logo-main" autoplay loop muted playsinline><source src="video.mp4" type="video/mp4"></video>
             <h2>Administración K&G</h2>
             <select id="empresa-select" class="main-select">
                 <option value="FEMELY">EMPRESA: FEMELY</option>
@@ -52,13 +60,8 @@
     <div id="app" class="hidden">
         <header class="header">
             <div class="header-left">
-                <video class="logo-header" autoplay loop muted playsinline>
-                    <source src="video.mp4" type="video/mp4">
-                </video>
-                <div>
-                    <h2 id="nombre-empresa-titulo">---</h2>
-                    <small id="clock"></small>
-                </div>
+                <video class="logo-header" autoplay loop muted playsinline><source src="video.mp4" type="video/mp4"></video>
+                <div><h2 id="nombre-empresa-titulo">---</h2><small id="clock"></small></div>
             </div>
             <div class="header-right">
                 <button class="btn-logout" style="background: #38bdf8; color: #0f172a;" onclick="abrirModalClave()">⚙️ Clave</button>
@@ -66,11 +69,10 @@
             </div>
         </header>
 
-        <!-- BCV MOVIDO AQUÍ, AL LADO DE LAS PESTAÑAS -->
         <nav class="nav-tabs" style="display: flex; justify-content: space-between; align-items: center;">
             <div>
                 <button onclick="verPestaña('inv')">📦 Inventario</button>
-                <button onclick="verPestaña('cob')">🤝 Cobranza (2 Cuotas)</button>
+                <button onclick="verPestaña('cob')">🤝 Cobranza</button>
             </div>
             <div class="bcv-tag" style="margin-right: 20px;">BCV: <span id="bcv-val">...</span></div>
         </nav>
@@ -86,33 +88,22 @@
                         <input type="number" id="ic" placeholder="Cantidad" min="1" required>
                         <button type="submit">Guardar</button>
                     </form>
-                    <div class="scroll">
-                        <table id="t-inv">
-                            <thead><tr><th>Producto</th><th>Distribuidor</th><th>Precio</th><th>Stock</th><th>Acción</th></tr></thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
+                    <div class="scroll"><table id="t-inv"><thead><tr><th>Producto</th><th>Distribuidor</th><th>Precio</th><th>Stock</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
                 </div>
             </section>
 
             <section id="sec-cob" class="tab-panel hidden">
                 <div class="card">
-                    <h3>Nueva Venta (Pagos a 15 y 30 días)</h3>
+                    <h3>Nueva Venta a Crédito</h3>
                     <form id="f-cob" class="form-grid">
                         <input type="text" id="cn" placeholder="Nombre del Cliente" required>
                         <select id="cl" required><option value="">¿Qué lleva?</option></select>
                         <input type="number" id="cc" placeholder="Cant." min="1" value="1" required>
-                        <input type="text" id="cref" placeholder="Ref. Pago Móvil">
-                        <button type="submit">Registrar Venta</button>
+                        <button type="submit">Registrar Deuda</button>
                     </form>
                     <div class="scroll">
                         <table id="t-cob">
-                            <thead>
-                                <tr>
-                                    <th>Cliente</th><th>Producto</th><th>Total $</th>
-                                    <th>Cuota 1 (15 días)</th><th>Cuota 2 (30 días)</th><th>Referencia</th><th>Acción</th>
-                                </tr>
-                            </thead>
+                            <thead><tr><th>Cliente</th><th>Producto</th><th>Total $</th><th>Abonado</th><th>Resta</th><th>Referencia</th><th>Acción</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>
