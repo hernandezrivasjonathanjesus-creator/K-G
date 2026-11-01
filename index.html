@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K&G - Multi-Empresa</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- BOTÓN DE ACCESIBILIDAD FLOTANTE -->
+    <button id="btn-accesibilidad" onclick="toggleAccesibilidad()">♿ Accesibilidad</button>
+
+    <!-- PANEL DE ACCESIBILIDAD -->
+    <div id="panel-accesibilidad" class="hidden">
+        <h4>Colores de la App</h4>
+        <button onclick="cambiarTema('default')">Tema Oscuro (Original)</button>
+        <button onclick="cambiarTema('pastel-rosa')">Tema Pastel Rosa 🌸</button>
+        <button onclick="cambiarTema('pastel-azul')">Tema Pastel Azul 💧</button>
+        <button onclick="cambiarTema('pastel-verde')">Tema Pastel Verde 🌿</button>
+        <hr>
+        <h4>Tamaño del Texto</h4>
+        <button onclick="cambiarFuente(1)">Aumentar Texto 🔍+</button>
+        <button onclick="cambiarFuente(-1)">Disminuir Texto 🔍-</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="login-screen" class="overlay">
+        <div class="login-card">
+            <video class="logo-main" autoplay loop muted playsinline>
+                <source src="video.mp4" type="video/mp4">
+            </video>
+            <h2>Administración K&G</h2>
+            <select id="empresa-select" class="main-select">
+                <option value="FEMELY">EMPRESA: FEMELY</option>
+                <option value="TENDENCIA">EMPRESA: TENDENCIA</option>
+            </select>
+            <input type="password" id="pass" placeholder="Contraseña">
+            <button onclick="verificar()">Entrar al Sistema</button>
+            <small id="login-error" class="error-msg"></small>
+        </div>
+    </div>
+
+    <!-- APP -->
+    <div id="app" class="hidden">
+        <header class="header">
+            <div class="header-left">
+                <video class="logo-header" autoplay loop muted playsinline>
+                    <source src="video.mp4" type="video/mp4">
+                </video>
+                <div>
+                    <h2 id="nombre-empresa-titulo">---</h2>
+                    <small id="clock"></small>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="btn-logout" onclick="location.reload()">Salir</button>
+            </div>
+        </header>
+
+        <nav class="nav-tabs">
+            <button onclick="verPestaña('inv')">📦 Inventario</button>
+            <button onclick="verPestaña('cob')">🤝 Cobranza (2 Cuotas)</button>
+        </nav>
+
+        <main class="container">
+            <!-- INVENTARIO -->
+            <section id="sec-inv" class="tab-panel">
+                <div class="card">
+                    <h3>Cargar Stock</h3>
+                    <form id="f-inv" class="form-grid">
+                        <input type="text" id="in" placeholder="Producto" required>
+                        <input type="text" id="id" placeholder="Distribuidor">
+                        <input type="number" id="ip" placeholder="Precio $" step="0.01" required>
+                        <input type="number" id="ic" placeholder="Cantidad" min="1" required>
+                        <button type="submit">Guardar</button>
+                    </form>
+                    <div class="scroll">
+                        <table id="t-inv">
+                            <thead><tr><th>Producto</th><th>Distribuidor</th><th>Precio</th><th>Stock</th><th>Acción</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- COBRANZA -->
+            <section id="sec-cob" class="tab-panel hidden">
+                <div class="card">
+                    <h3>Nueva Venta (Pagos a 15 y 30 días)</h3>
+                    <form id="f-cob" class="form-grid">
+                        <input type="text" id="cn" placeholder="Nombre del Cliente" required>
+                        <select id="cl" required><option value="">¿Qué lleva?</option></select>
+                        <input type="number" id="cc" placeholder="Cant." min="1" value="1" required>
+                        <button type="submit">Registrar Venta</button>
+                    </form>
+                    <div class="scroll">
+                        <table id="t-cob">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th><th>Producto</th><th>Total $</th>
+                                    <th>Cuota 1 (15 días)</th><th>Cuota 2 (30 días)</th><th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
