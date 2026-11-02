@@ -53,10 +53,13 @@ bot.onText(/\/stock/, (msg) => {
 // --- RUTA SECRETA PARA CARGAR EL CATÁLOGO DE GOLPE ---
 app.get('/api/cargar-catalogo', (req, res) => {
     try {
-        // Borramos los productos viejos para no duplicar
+        // 1. CREAMOS LA COLUMNA CATEGORÍA SI NO EXISTE (La magia para que no falle)
+        try { db.prepare("ALTER TABLE inventario ADD COLUMN categoria TEXT").run(); } catch(e) { /* Si ya existe, no hace nada */ }
+
+        // 2. Borramos los productos viejos para no duplicar
         db.prepare("DELETE FROM inventario WHERE empresa = 'FEMELY'").run();
         
-        // Insertamos los nuevos
+        // 3. Insertamos los nuevos
         const insert = db.prepare(`INSERT INTO inventario (empresa, producto, categoria, distribuidor, precio, stock) VALUES (?, ?, ?, ?, ?, ?)`);
         const insertarMuchos = db.transaction((prods) => {
             for (const p of prods) {
