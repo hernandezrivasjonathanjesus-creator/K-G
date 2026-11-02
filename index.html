@@ -6,6 +6,15 @@
     <title>K&G - Multi-Empresa</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
+    <style>
+        /* Estilos extra para que la factura se vea bien y no se imprima el fondo oscuro */
+        @media print {
+            body * { visibility: hidden; }
+            #contenido-nota, #contenido-nota * { visibility: visible; }
+            #contenido-nota { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; }
+            .no-print { display: none !important; }
+        }
+    </style>
 </head>
 <body>
     <!-- VIDEO DE FONDO TRANSPARENTE -->
@@ -59,6 +68,16 @@
             <input type="text" id="ref-abono" placeholder="Ref. Pago Móvil">
             <button onclick="guardarAbono()">Guardar Pago</button>
             <button onclick="cerrarModalAbono()" style="background: #ef4444; color: white; margin-top: 10px;">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- MODAL PARA LA NOTA / FACTURA IMPRIMIBLE -->
+    <div id="modal-nota" class="overlay hidden" style="z-index: 9999; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.8);">
+        <div id="contenido-nota" style="background: white; color: black; padding: 40px; border-radius: 8px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+            <!-- El contenido de la factura se inyecta aquí con JavaScript -->
+        </div>
+        <div style="position: absolute; top: 20px; right: 20px;" class="no-print">
+            <button onclick="document.getElementById('modal-nota').classList.add('hidden')" style="background: #ef4444; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">❌ Cerrar</button>
         </div>
     </div>
 

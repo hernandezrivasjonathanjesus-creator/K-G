@@ -234,9 +234,6 @@ async function cargarCobranza() {
 
     if (datos.length === 0) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">Sin ventas registradas</td></tr>`;
 
-    // AGRUPAR POR CLIENTE PARA LA NOTA
-    let agrupadoClientes = {};
-
     datos.forEach(d => {
         const resta = d.total - d.abonado;
         totalVentas += d.total;
@@ -244,6 +241,8 @@ async function cargarCobranza() {
 
         const colorResta = resta <= 0 ? 'color: #16a34a; font-weight: bold;' : 'color: #ef4444; font-weight: bold;';
         const botonAbonar = resta > 0 ? `<button class="pago-btn" onclick="abrirModalAbono(${d.id}, ${resta})" style="background:#f59e0b; color:white; margin-right:5px;">💵 Abonar</button>` : '';
+        
+        // Le pasamos solo el nombre del cliente al botón de la nota
         const botonNota = `<button onclick="generarNotaCliente('${d.cliente}')" style="background:#38bdf8; color:#0f172a; margin-right:5px;">🖨️ Nota</button>`;
 
         tbody.innerHTML += `
@@ -277,14 +276,14 @@ async function cargarBCV() {
     } catch { document.getElementById('bcv-val').textContent = 'N/D'; }
 }
 
-// --- FUNCIÓN PARA GENERAR NOTA AGRUPANDO TODOS LOS PRODUCTOS DEL CLIENTE ---
+// --- GENERAR NOTA DE CRÉDITO (IMPRIMIBLE Y TOTALIZADA) ---
 async function generarNotaCliente(nombreCliente) {
     let tasaStr = prompt(`Ingrese la tasa del día (Bs/USD) para la nota de ${nombreCliente}:`);
     if (!tasaStr) return; 
     let tasa = parseFloat(tasaStr);
     if (isNaN(tasa) || tasa <= 0) return alert("Por favor, ingrese una tasa válida.");
 
-    // Buscamos TODAS las deudas de este cliente en la API
+    // Buscamos TODAS las deudas de este cliente y las unificamos
     const res = await fetch(`/api/cobranza/${empresaActual}`);
     const todasLasVentas = await res.json();
     const ventasCliente = todasLasVentas.filter(v => v.cliente.toLowerCase() === nombreCliente.toLowerCase());
@@ -298,88 +297,62 @@ async function generarNotaCliente(nombreCliente) {
         abonadoUSD += v.abonado;
         htmlProductos += `
             <tr>
-                <td>${v.producto}</td>
-                <td style="text-align:center;">${v.cantidad}</td>
-                <td style="text-align:right;">$${Number(v.total).toFixed(2)}</td>
-                <td style="text-align:right;">Bs ${(v.total * tasa).toFixed(2)}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${v.producto}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${v.cantidad}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">$${Number(v.total).toFixed(2)}</td>
             </tr>
         `;
     });
 
     let restaUSD = totalUSD - abonadoUSD;
-    let totalBs = totalUSD * tasa;
-    let abonadoBs = abonadoUSD * tasa;
     let restaBs = restaUSD * tasa;
 
-    let notaHTML = `
-        <html>
-        <head>
-            <title>Nota de Entrega - ${nombreCliente}</title>
-            <style>
-                body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #333; }
-                .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #38bdf8; padding-bottom: 20px; }
-                .header img { width: 150px; object-fit: contain; margin-bottom: 10px; }
-                .header h2 { margin: 0; color: #0f172a; }
-                .info { margin-bottom: 30px; font-size: 16px; line-height: 1.6; }
-                table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-                th, td { border: 1px solid #cbd5e1; padding: 12px; font-size: 15px; text-align: left; }
-                th { background-color: #f1f5f9; color: #0f172a; }
-                .totales { text-align: right; font-size: 18px; margin-bottom: 40px; }
-                .totales h4 { margin: 5px 0; color: #64748b; }
-                .totales .deuda { color: #ef4444; font-size: 22px; font-weight: bold; }
-                .pago-movil { border: 2px dashed #38bdf8; padding: 20px; background: #f8fafc; width: 350px; border-radius: 8px; }
-                .pago-movil h4 { margin-top: 0; color: #0f172a; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; }
-                .pago-movil p { margin: 8px 0; font-size: 15px; }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <img src="/LOGO.png" alt="Logo K&G">
-                <h2>NOTA DE ENTREGA / ESTADO DE CUENTA</h2>
-                <p style="margin: 5px 0 0 0; color: #64748b;">Empresa: ${empresaActual}</p>
-            </div>
-            
-            <div class="info">
-                <p><strong>Cliente:</strong> ${nombreCliente}</p>
-                <p><strong>Fecha:</strong> ${new Date().toLocaleString('es-VE')}</p>
-                <p><strong>Tasa aplicada:</strong> ${tasa.toFixed(2)} Bs/USD</p>
-            </div>
+    // Diseño de la factura en formato "papel"
+    let facturaHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <img src="/LOGO.png" alt="Logo" style="width: 120px; object-fit: contain;">
+            <h2 style="margin: 10px 0 5px 0; color: #0f172a;">NOTA DE CRÉDITO / ESTADO DE CUENTA</h2>
+            <p style="margin: 0; color: #64748b;">Empresa: ${empresaActual} | Fecha: ${new Date().toLocaleDateString('es-VE')}</p>
+            <p style="margin: 5px 0; font-weight: bold; font-size: 18px;">Cliente: ${nombreCliente.toUpperCase()}</p>
+        </div>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>Producto</th>
-                        <th style="text-align:center;">Cant.</th>
-                        <th style="text-align:right;">Total USD</th>
-                        <th style="text-align:right;">Total Bs</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${htmlProductos}
-                </tbody>
-            </table>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <thead>
+                <tr style="background: #f1f5f9;">
+                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #38bdf8;">Producto</th>
+                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #38bdf8;">Cant.</th>
+                    <th style="padding: 10px; text-align: right; border-bottom: 2px solid #38bdf8;">Total USD</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${htmlProductos}
+            </tbody>
+        </table>
 
-            <div class="totales">
-                <h4>Total inicial: $${totalUSD.toFixed(2)} (Bs ${totalBs.toFixed(2)})</h4>
-                <h4>Abonado: $${abonadoUSD.toFixed(2)} (Bs ${abonadoBs.toFixed(2)})</h4>
-                <h4 class="deuda">Resta por pagar: $${restaUSD.toFixed(2)} (Bs ${restaBs.toFixed(2)})</h4>
-            </div>
+        <div style="text-align: right; margin-bottom: 20px; padding: 15px; background: #f8fafc; border-radius: 8px;">
+            <p style="margin: 5px 0; font-size: 16px;">Total Deuda (USD): <strong>$${totalUSD.toFixed(2)}</strong></p>
+            <p style="margin: 5px 0; font-size: 16px; color: #16a34a;">Total Abonado (USD): <strong>$${abonadoUSD.toFixed(2)}</strong></p>
+            <hr style="border: 0; border-top: 1px solid #cbd5e1; margin: 10px 0;">
+            <p style="margin: 5px 0; font-size: 20px; color: #ef4444;">RESTA POR PAGAR (USD): <strong>$${restaUSD.toFixed(2)}</strong></p>
+            <p style="margin: 5px 0; font-size: 16px; color: #64748b;">Equivalente en Bs (Tasa ${tasa.toFixed(2)}): <strong>Bs. ${restaBs.toFixed(2)}</strong></p>
+        </div>
 
-            <div class="pago-movil">
-                <h4>Datos para Pago Móvil</h4>
-                <p><strong>Titular:</strong> Fanielis Sánchez</p>
-                <p><strong>C.I:</strong> V-16.438.319</p>
-                <p><strong>Banco:</strong> Banesco</p>
-                <p><strong>Teléfono:</strong> 0414-0000000</p> <!-- PON EL TELÉFONO AQUÍ -->
-            </div>
-        </body>
-        </html>
+        <div style="border: 2px dashed #38bdf8; padding: 15px; border-radius: 8px;">
+            <h4 style="margin: 0 0 10px 0; color: #0f172a;">Datos para Pago Móvil</h4>
+            <p style="margin: 4px 0; font-size: 14px;"><strong>Titular:</strong> Fanielis Sánchez</p>
+            <p style="margin: 4px 0; font-size: 14px;"><strong>C.I:</strong> V-16.438.319</p>
+            <p style="margin: 4px 0; font-size: 14px;"><strong>Banco:</strong> Banesco</p>
+            <p style="margin: 4px 0; font-size: 14px;"><strong>Teléfono:</strong> 0414-0000000</p> <!-- PON EL TELÉFONO AQUÍ -->
+        </div>
+
+        <div style="margin-top: 30px; text-align: center;" class="no-print">
+            <button onclick="window.print()" style="background: #16a34a; color: white; padding: 12px 30px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">
+                🖨️ Imprimir Nota de Crédito
+            </button>
+        </div>
     `;
 
-    let ventana = window.open('', '_blank');
-    ventana.document.write(notaHTML);
-    ventana.document.close();
-    ventana.focus();
-    
-    setTimeout(() => { ventana.print(); }, 1000); 
+    // Lo inyectamos en el modal que creamos en el HTML
+    document.getElementById('contenido-nota').innerHTML = facturaHTML;
+    document.getElementById('modal-nota').classList.remove('hidden');
 }
