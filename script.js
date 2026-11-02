@@ -306,7 +306,7 @@ async function cargarBCV() {
     } catch { document.getElementById('bcv-val').textContent = 'N/D'; }
 }
 
-// --- GENERAR NOTA DE CRÉDITO CORREGIDA ---
+// --- GENERAR NOTA DE CRÉDITO ---
 async function generarNotaCliente(nombreCliente) {
     let tasaTexto = document.getElementById('bcv-val').textContent.replace(' Bs', '').replace(',', '.');
     let tasa = parseFloat(tasaTexto);
@@ -325,7 +325,7 @@ async function generarNotaCliente(nombreCliente) {
         abonadoUSD += Number(v.abonado);
         htmlProductos += `
             <tr>
-                <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; word-break: break-word;">${v.producto}</td>
+                <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; word-break: break-word; text-align: left;">${v.producto}</td>
                 <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: center;">${v.cantidad}</td>
                 <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: right; white-space: nowrap;">$${Number(v.total).toFixed(2)}</td>
             </tr>
@@ -338,7 +338,7 @@ async function generarNotaCliente(nombreCliente) {
     let facturaHTML = `
         <div style="
             width: 100%;
-            max-width: 600px;
+            max-width: 650px;
             margin: 0 auto;
             font-family: Arial, sans-serif;
             color: #1e293b;
@@ -355,7 +355,7 @@ async function generarNotaCliente(nombreCliente) {
                 <p style="margin: 8px 0 0 0; font-weight: bold; font-size: 15px;">Cliente: <span style="color: #0284c7;">${nombreCliente.toUpperCase()}</span></p>
             </div>
 
-            <div style="width: 100%; overflow-x: auto; margin-bottom: 20px;">
+            <div style="width: 100%; margin-bottom: 20px;">
                 <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
                     <thead>
                         <tr style="background: #f8fafc;">
@@ -401,7 +401,7 @@ async function generarNotaCliente(nombreCliente) {
                 </div>
             </div>
 
-            <div style="border: 2px dashed #38bdf8; padding: 15px; border-radius: 8px; background: #f0f9ff;">
+            <div style="border: 2px dashed #38bdf8; padding: 15px; border-radius: 8px; background: #f0f9ff; margin-bottom: 20px;">
                 <h4 style="margin: 0 0 10px 0; color: #0f172a; font-size: 14px; text-transform: uppercase;">Datos para Pago Móvil</h4>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">
                     <p style="margin: 0;"><strong>Titular:</strong> Fanielis Sánchez</p>
@@ -411,8 +411,8 @@ async function generarNotaCliente(nombreCliente) {
                 </div>
             </div>
 
-            <div style="margin-top: 25px; text-align: center;" class="no-print">
-                <button onclick="window.print()" style="background: #16a34a; color: white; padding: 12px 30px; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%;">
+            <div style="text-align: center;" class="no-print">
+                <button onclick="imprimirNota()" style="background: #16a34a; color: white; padding: 12px 30px; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%;">
                     🖨️ Imprimir Nota de Crédito
                 </button>
             </div>
@@ -421,6 +421,45 @@ async function generarNotaCliente(nombreCliente) {
 
     document.getElementById('contenido-nota').innerHTML = facturaHTML;
     document.getElementById('modal-nota').classList.remove('hidden');
+}
+
+// --- NUEVAS FUNCIONES PARA IMPRESIÓN PERFECTA ---
+function imprimirNota() {
+    const contenido = document.getElementById('contenido-nota').innerHTML;
+    const ventanaImpresion = window.open('', '_blank');
+    
+    ventanaImpresion.document.write(`
+        <html>
+            <head>
+                <title>Imprimir Nota de Crédito</title>
+                <style>
+                    @page { margin: 10mm; }
+                    body { 
+                        font-family: Arial, sans-serif; 
+                        margin: 0; 
+                        padding: 0; 
+                        color: #1e293b; 
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .no-print { display: none !important; }
+                    /* Quitamos sombras para que luzca como un documento impreso */
+                    div { box-shadow: none !important; }
+                    table { page-break-inside: avoid; }
+                </style>
+            </head>
+            <body>
+                ${contenido}
+                <script>
+                    window.onload = function() {
+                        window.print();
+                        window.onafterprint = function() { window.close(); };
+                    };
+                <\/script>
+            </body>
+        </html>
+    `);
+    ventanaImpresion.document.close();
 }
 
 function cambiarTasaNota(nuevaTasa, restaUSD) {
