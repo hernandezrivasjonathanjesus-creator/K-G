@@ -130,8 +130,8 @@
 
         <nav class="nav-tabs" style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <button onclick="verPestana('inv')">📦 Inventario</button>
-                <button onclick="verPestana('cob')">🤝 Cobranza</button>
+                <button onclick="verPestaña('inv')">📦 Inventario</button>
+                <button onclick="verPestaña('cob')">🤝 Cobranza</button>
             </div>
             <div class="bcv-tag" style="margin-right: 20px;">BCV: <span id="bcv-val">...</span></div>
         </nav>
@@ -158,8 +158,8 @@
                         <button type="submit">Guardar</button>
                     </form>
 
-                    <!-- FILTRO DE CATEGORÍA (se llena dinámicamente desde script.js) -->
-                    <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <!-- AQUI ESTA EL FILTRO DE CATEGORIA -->
+                    <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
                         <label style="font-weight: bold; color: var(--primary);">Filtrar por Categoría:</label>
                         <select id="filtro-categoria" onchange="filtrarInventario()" style="padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text-main); width: 100%; max-width: 300px;">
                             <option value="Todas">Todas las categorías</option>

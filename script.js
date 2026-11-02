@@ -2,7 +2,6 @@ let empresaActual = null;
 let fuenteActual = 16;
 let ventaSeleccionadaId = null;
 let carrito = []; 
-let inventarioGlobal = []; // Guardamos todo el inventario para filtrar
 
 setInterval(() => {
     const clock = document.getElementById('clock');
@@ -24,12 +23,12 @@ async function guardarClave() {
     if (res.ok) { alert('¡Contraseña actualizada!'); cerrarModalClave(); } else { alert('Error al guardar.'); }
 }
 
-// --- MODAL EDITAR PRODUCTO (CON CATEGORÍA) ---
+// --- MODAL EDITAR PRODUCTO (AHORA CON CATEGORÍA) ---
 function abrirModalEditar(id, producto, distribuidor, precio, stock, categoria) {
     document.getElementById('modal-editar').classList.remove('hidden');
     document.getElementById('edit-id').value = id;
     document.getElementById('edit-prod').value = producto;
-    document.getElementById('edit-cat').value = categoria || 'General';
+    document.getElementById('edit-cat').value = categoria || 'General'; // Carga la categoría
     document.getElementById('edit-dist').value = distribuidor === '-' ? '' : distribuidor;
     document.getElementById('edit-precio').value = precio;
     document.getElementById('edit-stock').value = stock;
@@ -39,7 +38,7 @@ async function guardarEdicion() {
     const id = document.getElementById('edit-id').value;
     const payload = {
         producto: document.getElementById('edit-prod').value.trim(),
-        categoria: document.getElementById('edit-cat').value.trim(),
+        categoria: document.getElementById('edit-cat').value.trim(), // Guarda la categoría
         distribuidor: document.getElementById('edit-dist').value.trim(),
         precio: parseFloat(document.getElementById('edit-precio').value),
         stock: parseInt(document.getElementById('edit-stock').value)
@@ -94,60 +93,25 @@ async function verificar() {
     } catch (e) { errBox.textContent = 'Error de conexión'; }
 }
 
-function verPestana(tab) {
+function verPestaña(tab) {
     document.getElementById('sec-inv').classList.toggle('hidden', tab !== 'inv');
     document.getElementById('sec-cob').classList.toggle('hidden', tab !== 'cob');
 }
 
-// --- INVENTARIO (CON CATEGORÍA Y FILTRO) ---
+// --- INVENTARIO (CON CATEGORÍA) ---
 async function cargarInventario() {
     const res = await fetch(`/api/inventario/${empresaActual}`);
     const datos = await res.json();
-    inventarioGlobal = datos;
-
-    // Llenar el select de filtro con categorías únicas
-    const filtroCat = document.getElementById('filtro-categoria');
-    const categoriaActual = filtroCat.value || 'Todas';
-    const categoriasUnicas = [...new Set(datos.map(d => d.categoria || 'General'))].sort();
-
-    filtroCat.innerHTML = '<option value="Todas">Todas las categorías</option>';
-    categoriasUnicas.forEach(cat => {
-        filtroCat.innerHTML += `<option value="${cat}">${cat}</option>`;
-    });
-    if (categoriasUnicas.includes(categoriaActual)) filtroCat.value = categoriaActual;
-
-    // Renderizar tabla respetando el filtro actual
-    renderizarInventario();
-
-    // Llenar select del carrito (todos los productos con stock)
-    const sel = document.getElementById('cl');
-    sel.innerHTML = '<option value="">¿Qué lleva?</option>';
-    datos.filter(d => d.stock > 0).forEach(d => {
-        sel.innerHTML += `<option value="${d.id}" data-precio="${d.precio}" data-stock="${d.stock}" data-nombre="${d.producto}">${d.producto} — $${Number(d.precio).toFixed(2)} (Stock: ${d.stock})</option>`;
-    });
-}
-
-// Pinta la tabla según el filtro activo
-function renderizarInventario() {
-    const filtro = document.getElementById('filtro-categoria').value;
     const tbody = document.querySelector('#t-inv tbody');
     tbody.innerHTML = '';
+    if (datos.length === 0) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center">Sin productos</td></tr>`;
 
-    const datosFiltrados = filtro === 'Todas'
-        ? inventarioGlobal
-        : inventarioGlobal.filter(d => (d.categoria || 'General') === filtro);
-
-    if (datosFiltrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center">Sin productos${filtro !== 'Todas' ? ' en esta categoría' : ''}</td></tr>`;
-        return;
-    }
-
-    datosFiltrados.forEach(d => {
+    datos.forEach(d => {
         const alerta = d.stock <= 5 ? `<br><span class="alerta-stock">¡Quedan pocos!</span>` : '';
         tbody.innerHTML += `
             <tr>
                 <td>${d.producto}</td>
-                <td>${d.categoria || '-'}</td>
+                <td>${d.categoria || '-'}</td> <!-- Muestra la categoría -->
                 <td>${d.distribuidor || '-'}</td>
                 <td>$${Number(d.precio).toFixed(2)}</td>
                 <td>${d.stock} ${alerta}</td>
@@ -158,11 +122,12 @@ function renderizarInventario() {
             </tr>
         `;
     });
-}
 
-// Se llama desde el onchange del select
-function filtrarInventario() {
-    renderizarInventario();
+    const sel = document.getElementById('cl');
+    sel.innerHTML = '<option value="">¿Qué lleva?</option>';
+    datos.filter(d => d.stock > 0).forEach(d => {
+        sel.innerHTML += `<option value="${d.id}" data-precio="${d.precio}" data-stock="${d.stock}" data-nombre="${d.producto}">${d.producto} — $${Number(d.precio).toFixed(2)} (Stock: ${d.stock})</option>`;
+    });
 }
 
 document.getElementById('f-inv').addEventListener('submit', async (e) => {
@@ -179,7 +144,7 @@ document.getElementById('f-inv').addEventListener('submit', async (e) => {
     await fetch('/api/inventario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
         empresa: empresaActual, 
         producto: document.getElementById('in').value.trim(), 
-        categoria: document.getElementById('icat').value.trim(),
+        categoria: document.getElementById('icat').value.trim(), // Guarda la categoría
         distribuidor: document.getElementById('id').value.trim(),
         precio: parseFloat(document.getElementById('ip').value), 
         stock: parseInt(document.getElementById('ic').value)
