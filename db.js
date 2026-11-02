@@ -11,10 +11,11 @@ let dbDir;
 if (isProduction) {
   dbDir = '/data'; 
 } else {
-  dbDir = path.join(__dirname, 'data');
+  // En local, usamos la misma carpeta donde está el proyecto
+  dbDir = __dirname; 
 }
 
-// 3. Crear la carpeta si no existe
+// 3. Crear la carpeta si no existe (solo aplica para local o si /data falla)
 try {
   if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
@@ -27,14 +28,15 @@ try {
   }
 }
 
-const dbPath = path.join(dbDir, 'database.db');
+// 4. Asignamos el nombre 'kg.db' para mantener tu archivo original
+const dbPath = path.join(dbDir, 'kg.db');
 console.log(`📁 Base de datos ubicada en: ${dbPath}`);
 
-// 4. Abrir la base de datos
+// 5. Abrir la base de datos
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
-// 5. Crear las tablas (CORREGIDO: Se quitó el comentario HTML que rompía el código)
+// 6. Crear las tablas
 db.exec(`
   CREATE TABLE IF NOT EXISTS configuracion (
     clave TEXT PRIMARY KEY,
@@ -63,9 +65,8 @@ db.exec(`
   );
 `);
 
-// 6. PARCHE DE MIGRACIÓN: Si tu base de datos ya existía sin la columna, esto la agrega sin borrar tus datos.
+// 7. PARCHE DE MIGRACIÓN
 try {
-    // Verificamos si la columna existe consultando la estructura de la tabla
     const tableInfo = db.prepare("PRAGMA table_info(inventario)").all();
     const tieneCategoria = tableInfo.some(col => col.name === 'categoria');
     

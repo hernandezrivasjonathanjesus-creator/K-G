@@ -10,10 +10,17 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// (El bloque de creación de la columna categoría ha sido eliminado de aquí porque ya se maneja de forma segura en db.js)
-
+// ⚠️ SEGURIDAD: Es mejor no poner el token directamente aquí. 
+// En Render, ve a "Environment" y crea una variable llamada TELEGRAM_TOKEN con tu token.
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || '9163487748:AAHv_6Utv1p-1feY7p_oyAsqfYImfkpKb0U';
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
+
+// --- APAGADO LIMPIO DEL BOT (Soluciona el error 409 Conflict) ---
+process.on('SIGTERM', () => {
+    console.log('Apagando servidor y deteniendo bot...');
+    bot.stopPolling();
+    process.exit(0);
+});
 
 bot.onText(/\/start/, (msg) => {
   bot.sendMessage(msg.chat.id, "👋 ¡Hola! Soy el asistente de K&G.\n\nComandos:\n/deudas\n/cliente [nombre]\n/stock");
