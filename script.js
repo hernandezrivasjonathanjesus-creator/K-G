@@ -47,19 +47,26 @@ async function guardarEdicion() {
 }
 
 // --- MODAL ABONO ---
-function abrirModalAbono(id, resta) {
-    ventaSeleccionadaId = id;
+// Ahora recibe un arreglo de IDs (porque un cliente puede tener varios productos en la BD)
+function abrirModalAbono(ids, resta) {
+    ventaSeleccionadaId = ids; 
     document.getElementById('modal-abono').classList.remove('hidden');
     document.getElementById('abono-resta-txt').textContent = `Resta por pagar: $${Number(resta).toFixed(2)}`;
     document.getElementById('monto-abono').value = Number(resta).toFixed(2);
     document.getElementById('ref-abono').value = '';
 }
 function cerrarModalAbono() { document.getElementById('modal-abono').classList.add('hidden'); }
+
 async function guardarAbono() {
     const monto = parseFloat(document.getElementById('monto-abono').value);
     const referencia = document.getElementById('ref-abono').value.trim();
     if (monto <= 0) return alert('El monto debe ser mayor a 0');
-    await fetch(`/api/cobranza/${ventaSeleccionadaId}/abono`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ abono: monto, referencia: referencia }) });
+
+    // Si el cliente tiene varios productos, el abono se lo aplicamos al primero
+    // (En esta versión simple, el abono se le suma al primer producto de la lista)
+    let primerId = Array.isArray(ventaSeleccionadaId) ? ventaSeleccionadaId[0] : ventaSeleccionadaId;
+
+    await fetch(`/api/cobranza/${primerId}/abono`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ abono: monto, referencia: referencia }) });
     cerrarModalAbono();
     await cargarCobranza();
 }
@@ -220,7 +227,7 @@ async function registrarVentaCarrito() {
     await cargarCobranza();
 }
 
-// --- COBRANZA Y GANANCIAS ---
+// --- COBRANZA Y GANANCIAS (AGRUPADO POR CLIENTE) ---
 async function cargarCobranza() {
     const res = await fetch(`/api/cobranza/${empresaActual}`);
     const datos = await res.json();
@@ -230,38 +237,72 @@ async function cargarCobranza() {
     let totalVentas = 0;
     let totalCobrado = 0;
 
-    if (datos.length === 0) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">Sin ventas registradas</td></tr>`;
+    if (datos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">Sin ventas registradas</td></tr>`;
+    } else {
+        // AQUÍ AGRUPAMOS LOS DATOS POR CLIENTE
+        const clientesAgrupados = {};
 
-    datos.forEach(d => {
-        const resta = d.total - d.abonado;
-        totalVentas += d.total;
-        totalCobrado += d.abonado;
+        datos.forEach(d => {
+            const nombre = d.cliente.toLowerCase();
+            if (!clientesAgrupados[nombre]) {
+                clientesAgrupados[nombre] = {
+                    nombreReal: d.cliente,
+                    ids: [],
+                    productos: [],
+                    total: 0,
+                    abonado: 0,
+                    referencia: d.referencia || '-'
+                };
+            }
+            clientesAgrupados[nombre].ids.push(d.id);
+            clientesAgrupados[nombre].productos.push(`${d.producto} x${d.cantidad}`);
+            clientesAgrupados[nombre].total += d.total;
+            clientesAgrupados[nombre].abonado += d.abonado;
+            if (d.referencia) clientesAgrupados[nombre].referencia = d.referencia;
+        });
 
-        const colorResta = resta <= 0 ? 'color: #16a34a; font-weight: bold;' : 'color: #ef4444; font-weight: bold;';
-        const botonAbonar = resta > 0 ? `<button class="pago-btn" onclick="abrirModalAbono(${d.id}, ${resta})" style="background:#f59e0b; color:white; margin-right:5px;">💵 Abonar</button>` : '';
-        
-        const botonNota = `<button onclick="generarNotaCliente('${d.cliente}')" style="background:#38bdf8; color:#0f172a; margin-right:5px;">🖨️ Nota</button>`;
+        // Dibujamos una sola fila por cliente
+        Object.keys(clientesAgrupados).forEach(key => {
+            const c = clientesAgrupados[key];
+            const resta = c.total - c.abonado;
+            
+            totalVentas += c.total;
+            totalCobrado += c.abonado;
 
-        tbody.innerHTML += `
-            <tr>
-                <td>${d.cliente}</td>
-                <td>${d.producto} x${d.cantidad}</td>
-                <td>$${Number(d.total).toFixed(2)}</td>
-                <td>$${Number(d.abonado).toFixed(2)}</td>
-                <td style="${colorResta}">$${Number(resta).toFixed(2)}</td>
-                <td>${d.referencia || '-'}</td>
-                <td>${botonNota} ${botonAbonar} <button onclick="eliminarVenta(${d.id})">🗑️</button></td>
-            </tr>
-        `;
-    });
+            const colorResta = resta <= 0 ? 'color: #16a34a; font-weight: bold;' : 'color: #ef4444; font-weight: bold;';
+            
+            const botonAbonar = resta > 0 ? `<button class="pago-btn" onclick="abrirModalAbono([${c.ids}], ${resta})" style="background:#f59e0b; color:white; margin-right:5px;">💵 Abonar</button>` : '';
+            
+            // NUEVO BOTÓN PARA EDITAR / AGREGAR MÁS PRODUCTOS AL MISMO CLIENTE
+            const botonAgregar = `<button onclick="agregarMasProductos('${c.nombreReal}')" style="background:#10b981; color:white; margin-right:5px;">➕ Agregar</button>`;
+            
+            const botonNota = `<button onclick="generarNotaCliente('${c.nombreReal}')" style="background:#38bdf8; color:#0f172a; margin-right:5px;">🖨️ Nota</button>`;
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${c.nombreReal}</strong></td>
+                    <td style="font-size: 13px;">${c.productos.join(', ')}</td>
+                    <td>$${Number(c.total).toFixed(2)}</td>
+                    <td>$${Number(c.abonado).toFixed(2)}</td>
+                    <td style="${colorResta}">$${Number(resta).toFixed(2)}</td>
+                    <td>${c.referencia}</td>
+                    <td>${botonNota} ${botonAgregar} ${botonAbonar}</td>
+                </tr>
+            `;
+        });
+    }
 
     document.getElementById('ganancia-ventas').textContent = `$${totalVentas.toFixed(2)}`;
     document.getElementById('ganancia-cobrado').textContent = `$${totalCobrado.toFixed(2)}`;
     document.getElementById('ganancia-deuda').textContent = `$${(totalVentas - totalCobrado).toFixed(2)}`;
 }
 
-async function eliminarVenta(id) {
-    if (confirm('¿Eliminar esta venta?')) { await fetch(`/api/cobranza/${id}`, { method: 'DELETE' }); await cargarCobranza(); }
+// FUNCIÓN PARA AUTOCOMPLETAR EL NOMBRE Y AGREGAR MÁS PRODUCTOS
+function agregarMasProductos(nombreCliente) {
+    document.getElementById('cn').value = nombreCliente;
+    document.getElementById('cn').focus(); // Pone el cursor en el nombre
+    alert(`Selecciona el nuevo producto en la lista y dale a "➕ Añadir". Luego presiona "Registrar Deuda Completa".`);
 }
 
 // --- TASA DEL BCV ---
@@ -275,14 +316,10 @@ async function cargarBCV() {
 
 // --- GENERAR NOTA DE CRÉDITO (TASA AUTOMÁTICA Y TELÉFONO AGREGADO) ---
 async function generarNotaCliente(nombreCliente) {
-    // 1. Tomamos la tasa directamente de la pantalla (sin preguntar)
     let tasaTexto = document.getElementById('bcv-val').textContent.replace(' Bs', '');
     let tasa = parseFloat(tasaTexto);
-    
-    // Si por alguna razón la tasa falló o dice N/D, usamos 1 para que no falle
     if (isNaN(tasa) || tasa <= 0) tasa = 1; 
 
-    // 2. Buscamos TODAS las deudas de este cliente y las unificamos
     const res = await fetch(`/api/cobranza/${empresaActual}`);
     const todasLasVentas = await res.json();
     const ventasCliente = todasLasVentas.filter(v => v.cliente.toLowerCase() === nombreCliente.toLowerCase());
@@ -306,7 +343,6 @@ async function generarNotaCliente(nombreCliente) {
     let restaUSD = totalUSD - abonadoUSD;
     let restaBs = restaUSD * tasa;
 
-    // 3. Diseño de la factura en formato "papel" con el teléfono 0424-602-73-93
     let facturaHTML = `
         <div style="text-align: center; margin-bottom: 20px;">
             <img src="/LOGO.png" alt="Logo" style="width: 120px; object-fit: contain;">
@@ -334,7 +370,6 @@ async function generarNotaCliente(nombreCliente) {
             <hr style="border: 0; border-top: 1px solid #cbd5e1; margin: 10px 0;">
             <p style="margin: 5px 0; font-size: 20px; color: #ef4444;">RESTA POR PAGAR (USD): <strong>$${restaUSD.toFixed(2)}</strong></p>
             
-            <!-- AQUI PUEDES EDITAR LA TASA SI QUIERES CAMBIARLA EN LA NOTA DIRECTAMENTE -->
             <p style="margin: 5px 0; font-size: 16px; color: #64748b;">
                 Equivalente en Bs (Tasa 
                 <input type="number" step="0.01" value="${tasa.toFixed(2)}" style="width: 80px; padding: 2px; font-size: 14px; border: 1px solid #cbd5e1;" onchange="cambiarTasaNota(this.value, ${restaUSD})"> 
@@ -361,7 +396,6 @@ async function generarNotaCliente(nombreCliente) {
     document.getElementById('modal-nota').classList.remove('hidden');
 }
 
-// Función extra por si necesitas recalcular los bolívares a mano en la nota
 function cambiarTasaNota(nuevaTasa, restaUSD) {
     let tasa = parseFloat(nuevaTasa);
     if (isNaN(tasa) || tasa <= 0) return;
