@@ -55,7 +55,6 @@
             <h2>Editar Producto</h2>
             <input type="hidden" id="edit-id">
             <input type="text" id="edit-prod" placeholder="Producto" required>
-            <!-- NUEVO CAMPO DE CATEGORÍA AL EDITAR -->
             <input type="text" id="edit-cat" placeholder="Categoría (ej. Maquillaje)">
             <input type="text" id="edit-dist" placeholder="Distribuidor">
             <input type="number" id="edit-precio" placeholder="Precio $" step="0.01" required>
@@ -91,7 +90,6 @@
     <!-- MODAL PARA LA NOTA / FACTURA IMPRIMIBLE -->
     <div id="modal-nota" class="overlay hidden" style="z-index: 9999; display: flex; justify-content: center; align-items: flex-start; background: rgba(0,0,0,0.8); padding: 20px; overflow-y: auto;">
         <div style="background: white; border-radius: 12px; width: 100%; max-width: 700px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; margin-top: 20px; margin-bottom: 20px;">
-            <!-- BARRA SUPERIOR CON BOTÓN DE CERRAR -->
             <div class="no-print modal-header-sticky">
                 <button onclick="document.getElementById('modal-nota').classList.add('hidden')" 
                         style="background: #ef4444; color: white; padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: transform 0.1s;"
@@ -100,10 +98,7 @@
                     ❌ CERRAR
                 </button>
             </div>
-            <!-- Aquí se inyecta la factura -->
-            <div id="contenido-nota" style="padding: 20px; color: #1e293b;">
-                <!-- Contenido inyectado por JS -->
-            </div>
+            <div id="contenido-nota" style="padding: 20px; color: #1e293b;"></div>
         </div>
     </div>
 
@@ -135,8 +130,8 @@
 
         <nav class="nav-tabs" style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <button onclick="verPestaña('inv')">📦 Inventario</button>
-                <button onclick="verPestaña('cob')">🤝 Cobranza</button>
+                <button onclick="verPestana('inv')">📦 Inventario</button>
+                <button onclick="verPestana('cob')">🤝 Cobranza</button>
             </div>
             <div class="bcv-tag" style="margin-right: 20px;">BCV: <span id="bcv-val">...</span></div>
         </nav>
@@ -156,16 +151,23 @@
                     <h3>Cargar Stock</h3>
                     <form id="f-inv" class="form-grid">
                         <input type="text" id="in" placeholder="Producto" required>
-                        <!-- NUEVO CAMPO DE CATEGORÍA AL GUARDAR -->
                         <input type="text" id="icat" placeholder="Categoría (ej. Maquillaje)">
                         <input type="text" id="id" placeholder="Distribuidor">
                         <input type="number" id="ip" placeholder="Precio $" step="0.01" required>
                         <input type="number" id="ic" placeholder="Cantidad" min="1" required>
                         <button type="submit">Guardar</button>
                     </form>
+
+                    <!-- FILTRO DE CATEGORÍA (se llena dinámicamente desde script.js) -->
+                    <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <label style="font-weight: bold; color: var(--primary);">Filtrar por Categoría:</label>
+                        <select id="filtro-categoria" onchange="filtrarInventario()" style="padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text-main); width: 100%; max-width: 300px;">
+                            <option value="Todas">Todas las categorías</option>
+                        </select>
+                    </div>
+
                     <div class="scroll">
                         <table id="t-inv">
-                            <!-- AGREGAMOS LA COLUMNA CATEGORÍA EN LA TABLA -->
                             <thead><tr><th>Producto</th><th>Categoría</th><th>Distribuidor</th><th>Precio</th><th>Stock</th><th>Acción</th></tr></thead>
                             <tbody></tbody>
                         </table>
@@ -177,7 +179,6 @@
                 <div class="card">
                     <h3>Nueva Venta (Carrito de Cliente)</h3>
                     
-                    <!-- FORMULARIO DE AGREGAR AL CARRITO -->
                     <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr auto; margin-bottom: 15px;">
                         <input type="text" id="cn" placeholder="Nombre del Cliente" required>
                         <select id="cl"><option value="">¿Qué lleva?</option></select>
@@ -185,7 +186,6 @@
                         <button type="button" onclick="agregarAlCarrito()" style="background: #16a34a; color: white;">➕ Añadir</button>
                     </div>
 
-                    <!-- TABLA DEL CARRITO VISUAL -->
                     <div class="scroll" style="margin-bottom: 15px; max-height: 200px;">
                         <table id="t-carrito" style="background: rgba(255,255,255,0.05);">
                             <thead><tr><th>Producto</th><th>Cant.</th><th>Precio $</th><th>Subtotal $</th><th>Quitar</th></tr></thead>
