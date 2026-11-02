@@ -1,6 +1,6 @@
 const express = require('express');
 const path = require('path');
-const productosFemely = require('./catalogo'); // <-- Importamos la lista
+const productosFemely = require('./catalogo'); 
 const db = require('./db');
 const TelegramBot = require('node-telegram-bot-api');
 
@@ -9,6 +9,16 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.static(__dirname));
+
+// ============================================
+// CREACIÓN AUTOMÁTICA DE LA COLUMNA CATEGORÍA
+// ============================================
+try { 
+    db.prepare("ALTER TABLE inventario ADD COLUMN categoria TEXT").run(); 
+    console.log("Columna categoría creada o ya existía.");
+} catch(e) { 
+    // Si ya existe, no hace nada
+}
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || '9163487748:AAHv_6Utv1p-1feY7p_oyAsqfYImfkpKb0U';
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
@@ -50,16 +60,11 @@ bot.onText(/\/stock/, (msg) => {
   bot.sendMessage(msg.chat.id, mensaje, { parse_mode: 'Markdown' });
 });
 
-// --- RUTA SECRETA PARA CARGAR EL CATÁLOGO DE GOLPE ---
+// --- RUTA PARA CARGAR EL CATÁLOGO ---
 app.get('/api/cargar-catalogo', (req, res) => {
     try {
-        // 1. CREAMOS LA COLUMNA CATEGORÍA SI NO EXISTE
-        try { db.prepare("ALTER TABLE inventario ADD COLUMN categoria TEXT").run(); } catch(e) { /* Si ya existe, no hace nada */ }
-
-        // 2. Borramos los productos viejos para no duplicar
         db.prepare("DELETE FROM inventario WHERE empresa = 'FEMELY'").run();
         
-        // 3. Insertamos los nuevos con STOCK EN 0
         const insert = db.prepare(`INSERT INTO inventario (empresa, producto, categoria, distribuidor, precio, stock) VALUES (?, ?, ?, ?, ?, ?)`);
         const insertarMuchos = db.transaction((prods) => {
             for (const p of prods) {
@@ -94,7 +99,6 @@ app.post('/api/cambiar-clave', (req, res) => {
 
 // --- INVENTARIO (ORDENADO POR CATEGORÍA Y NOMBRE) ---
 app.get('/api/inventario/:empresa', (req, res) => {
-  // AQUÍ ESTÁ EL CAMBIO PARA QUE SE ORDENE POR CATEGORÍA
   res.json(db.prepare('SELECT * FROM inventario WHERE empresa = ? ORDER BY categoria ASC, producto ASC').all(req.params.empresa));
 });
 
