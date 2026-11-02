@@ -23,11 +23,12 @@ async function guardarClave() {
     if (res.ok) { alert('¡Contraseña actualizada!'); cerrarModalClave(); } else { alert('Error al guardar.'); }
 }
 
-// --- MODAL EDITAR PRODUCTO ---
-function abrirModalEditar(id, producto, distribuidor, precio, stock) {
+// --- MODAL EDITAR PRODUCTO (AHORA CON CATEGORÍA) ---
+function abrirModalEditar(id, producto, distribuidor, precio, stock, categoria) {
     document.getElementById('modal-editar').classList.remove('hidden');
     document.getElementById('edit-id').value = id;
     document.getElementById('edit-prod').value = producto;
+    document.getElementById('edit-cat').value = categoria || 'General'; // Carga la categoría
     document.getElementById('edit-dist').value = distribuidor === '-' ? '' : distribuidor;
     document.getElementById('edit-precio').value = precio;
     document.getElementById('edit-stock').value = stock;
@@ -37,6 +38,7 @@ async function guardarEdicion() {
     const id = document.getElementById('edit-id').value;
     const payload = {
         producto: document.getElementById('edit-prod').value.trim(),
+        categoria: document.getElementById('edit-cat').value.trim(), // Guarda la categoría
         distribuidor: document.getElementById('edit-dist').value.trim(),
         precio: parseFloat(document.getElementById('edit-precio').value),
         stock: parseInt(document.getElementById('edit-stock').value)
@@ -96,24 +98,25 @@ function verPestaña(tab) {
     document.getElementById('sec-cob').classList.toggle('hidden', tab !== 'cob');
 }
 
-// --- INVENTARIO ---
+// --- INVENTARIO (CON CATEGORÍA) ---
 async function cargarInventario() {
     const res = await fetch(`/api/inventario/${empresaActual}`);
     const datos = await res.json();
     const tbody = document.querySelector('#t-inv tbody');
     tbody.innerHTML = '';
-    if (datos.length === 0) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center">Sin productos</td></tr>`;
+    if (datos.length === 0) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center">Sin productos</td></tr>`;
 
     datos.forEach(d => {
         const alerta = d.stock <= 5 ? `<br><span class="alerta-stock">¡Quedan pocos!</span>` : '';
         tbody.innerHTML += `
             <tr>
                 <td>${d.producto}</td>
+                <td>${d.categoria || '-'}</td> <!-- Muestra la categoría -->
                 <td>${d.distribuidor || '-'}</td>
                 <td>$${Number(d.precio).toFixed(2)}</td>
                 <td>${d.stock} ${alerta}</td>
                 <td>
-                    <button style="background: #38bdf8; color: #0f172a; margin-right: 5px;" onclick="abrirModalEditar(${d.id}, '${d.producto}', '${d.distribuidor}', ${d.precio}, ${d.stock})">✏️</button>
+                    <button style="background: #38bdf8; color: #0f172a; margin-right: 5px;" onclick="abrirModalEditar(${d.id}, '${d.producto}', '${d.distribuidor}', ${d.precio}, ${d.stock}, '${d.categoria}')">✏️</button>
                     <button onclick="eliminarInv(${d.id})">🗑️</button>
                 </td>
             </tr>
@@ -139,8 +142,12 @@ document.getElementById('f-inv').addEventListener('submit', async (e) => {
     }
 
     await fetch('/api/inventario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-        empresa: empresaActual, producto: document.getElementById('in').value.trim(), distribuidor: document.getElementById('id').value.trim(),
-        precio: parseFloat(document.getElementById('ip').value), stock: parseInt(document.getElementById('ic').value)
+        empresa: empresaActual, 
+        producto: document.getElementById('in').value.trim(), 
+        categoria: document.getElementById('icat').value.trim(), // Guarda la categoría
+        distribuidor: document.getElementById('id').value.trim(),
+        precio: parseFloat(document.getElementById('ip').value), 
+        stock: parseInt(document.getElementById('ic').value)
     })});
     e.target.reset();
     await cargarInventario();
@@ -293,8 +300,8 @@ async function cargarCobranza() {
 // FUNCIÓN PARA AUTOCOMPLETAR EL NOMBRE Y AGREGAR MÁS PRODUCTOS
 function agregarMasProductos(nombreCliente) {
     document.getElementById('cn').value = nombreCliente;
-    document.getElementById('cc').value = 1; // Resetea la cantidad a 1
-    document.getElementById('cl').focus(); // Enfoca el selector de productos
+    document.getElementById('cc').value = 1;
+    document.getElementById('cl').focus();
     alert(`Selecciona el nuevo producto en la lista y dale a "➕ Añadir". Luego presiona "Registrar Deuda Completa".`);
 }
 
@@ -324,7 +331,6 @@ async function generarNotaCliente(nombreCliente) {
     ventasCliente.forEach(v => {
         totalUSD += Number(v.total);
         abonadoUSD += Number(v.abonado);
-        // ESTILOS DE LA TABLA CORREGIDOS PARA QUE NO SE CORTE EL TOTAL
         htmlProductos += `
             <tr>
                 <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; word-break: break-word; text-align: left;">${v.producto}</td>
@@ -338,48 +344,26 @@ async function generarNotaCliente(nombreCliente) {
     let restaBs = restaUSD * tasa;
 
     let facturaHTML = `
-        <div style="
-            width: 100%;
-            max-width: 650px;
-            margin: 0 auto;
-            font-family: Arial, sans-serif;
-            color: #1e293b;
-            box-sizing: border-box;
-            background: #ffffff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        ">
+        <div style="width: 100%; max-width: 650px; margin: 0 auto; font-family: Arial, sans-serif; color: #1e293b; box-sizing: border-box; background: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #38bdf8; padding-bottom: 15px;">
                 <img src="/LOGO.png" alt="Logo" style="width: 100px; max-height: 80px; object-fit: contain;">
                 <h2 style="margin: 10px 0 4px 0; color: #0f172a; font-size: 18px; text-transform: uppercase;">Nota de Crédito</h2>
                 <p style="margin: 0; color: #64748b; font-size: 12px;">Empresa: <strong>${empresaActual}</strong> | Fecha: ${new Date().toLocaleDateString('es-VE')}</p>
                 <p style="margin: 8px 0 0 0; font-weight: bold; font-size: 15px;">Cliente: <span style="color: #0284c7;">${nombreCliente.toUpperCase()}</span></p>
             </div>
-
             <div style="width: 100%; margin-bottom: 20px;">
                 <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
                     <thead>
                         <tr style="background: #f8fafc;">
-                            <!-- ANCHOS CORREGIDOS: 60%, 15% y 25% -->
                             <th style="padding: 10px; text-align: left; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 60%; color: #0f172a;">Producto</th>
                             <th style="padding: 10px; text-align: center; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 15%; color: #0f172a;">Cant.</th>
                             <th style="padding: 10px; text-align: right; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 25%; color: #0f172a;">Total USD</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${htmlProductos || '<tr><td colspan="3" style="text-align:center; padding:15px; color:#64748b;">Sin productos</td></tr>'}
-                    </tbody>
+                    <tbody>${htmlProductos || '<tr><td colspan="3" style="text-align:center; padding:15px; color:#64748b;">Sin productos</td></tr>'}</tbody>
                 </table>
             </div>
-
-            <div style="
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                padding: 15px;
-                margin-bottom: 20px;
-            ">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                     <span style="font-size: 14px; color: #475569;">Total Deuda (USD):</span>
                     <strong style="font-size: 14px;">$${totalUSD.toFixed(2)}</strong>
@@ -396,14 +380,11 @@ async function generarNotaCliente(nombreCliente) {
                 <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #64748b; background: #e2e8f0; padding: 8px; border-radius: 4px;">
                     <span>Equivalente en Bs. (Tasa)</span>
                     <div style="display: flex; align-items: center; gap: 5px;">
-                        <input type="number" step="0.01" value="${tasa.toFixed(2)}"
-                            style="width: 65px; padding: 4px; font-size: 12px; border: 1px solid #94a3b8; border-radius: 4px; text-align: right;"
-                            onchange="cambiarTasaNota(this.value, ${restaUSD})">
+                        <input type="number" step="0.01" value="${tasa.toFixed(2)}" style="width: 65px; padding: 4px; font-size: 12px; border: 1px solid #94a3b8; border-radius: 4px; text-align: right;" onchange="cambiarTasaNota(this.value, ${restaUSD})">
                         <strong id="resta-bs" style="font-size: 14px; color: #0f172a;">Bs. ${restaBs.toFixed(2)}</strong>
                     </div>
                 </div>
             </div>
-
             <div style="border: 2px dashed #38bdf8; padding: 15px; border-radius: 8px; background: #f0f9ff; margin-bottom: 20px;">
                 <h4 style="margin: 0 0 10px 0; color: #0f172a; font-size: 14px; text-transform: uppercase;">Datos para Pago Móvil</h4>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">
@@ -413,11 +394,8 @@ async function generarNotaCliente(nombreCliente) {
                     <p style="margin: 0;"><strong>Teléfono:</strong> 0424-602-73-93</p>
                 </div>
             </div>
-
             <div style="text-align: center;" class="no-print">
-                <button onclick="imprimirNota()" style="background: #16a34a; color: white; padding: 12px 30px; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%;">
-                    🖨️ Imprimir Nota de Crédito
-                </button>
+                <button onclick="imprimirNota()" style="background: #16a34a; color: white; padding: 12px 30px; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%;">🖨️ Imprimir Nota de Crédito</button>
             </div>
         </div>
     `;
@@ -426,7 +404,7 @@ async function generarNotaCliente(nombreCliente) {
     document.getElementById('modal-nota').classList.remove('hidden');
 }
 
-// --- NUEVAS FUNCIONES PARA IMPRESIÓN PERFECTA ---
+// --- FUNCIONES PARA IMPRESIÓN PERFECTA ---
 function imprimirNota() {
     const contenido = document.getElementById('contenido-nota').innerHTML;
     const ventanaImpresion = window.open('', '_blank');
@@ -437,16 +415,8 @@ function imprimirNota() {
                 <title>Imprimir Nota de Crédito</title>
                 <style>
                     @page { margin: 10mm; }
-                    body { 
-                        font-family: Arial, sans-serif; 
-                        margin: 0; 
-                        padding: 0; 
-                        color: #1e293b; 
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
+                    body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #1e293b; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     .no-print { display: none !important; }
-                    /* Quitamos sombras para que luzca como un documento impreso */
                     div { box-shadow: none !important; }
                     table { page-break-inside: avoid; }
                 </style>

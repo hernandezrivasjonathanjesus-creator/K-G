@@ -55,6 +55,8 @@
             <h2>Editar Producto</h2>
             <input type="hidden" id="edit-id">
             <input type="text" id="edit-prod" placeholder="Producto" required>
+            <!-- NUEVO CAMPO DE CATEGORÍA AL EDITAR -->
+            <input type="text" id="edit-cat" placeholder="Categoría (ej. Maquillaje)">
             <input type="text" id="edit-dist" placeholder="Distribuidor">
             <input type="number" id="edit-precio" placeholder="Precio $" step="0.01" required>
             <input type="number" id="edit-stock" placeholder="Cantidad" min="1" required>
@@ -88,10 +90,8 @@
 
     <!-- MODAL PARA LA NOTA / FACTURA IMPRIMIBLE -->
     <div id="modal-nota" class="overlay hidden" style="z-index: 9999; display: flex; justify-content: center; align-items: flex-start; background: rgba(0,0,0,0.8); padding: 20px; overflow-y: auto;">
-        
         <div style="background: white; border-radius: 12px; width: 100%; max-width: 700px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; margin-top: 20px; margin-bottom: 20px;">
-            
-            <!-- BARRA SUPERIOR CON BOTÓN DE CERRAR (Siempre visible) -->
+            <!-- BARRA SUPERIOR CON BOTÓN DE CERRAR -->
             <div class="no-print modal-header-sticky">
                 <button onclick="document.getElementById('modal-nota').classList.add('hidden')" 
                         style="background: #ef4444; color: white; padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: transform 0.1s;"
@@ -100,7 +100,6 @@
                     ❌ CERRAR
                 </button>
             </div>
-
             <!-- Aquí se inyecta la factura -->
             <div id="contenido-nota" style="padding: 20px; color: #1e293b;">
                 <!-- Contenido inyectado por JS -->
@@ -157,6 +156,8 @@
                     <h3>Cargar Stock</h3>
                     <form id="f-inv" class="form-grid">
                         <input type="text" id="in" placeholder="Producto" required>
+                        <!-- NUEVO CAMPO DE CATEGORÍA AL GUARDAR -->
+                        <input type="text" id="icat" placeholder="Categoría (ej. Maquillaje)">
                         <input type="text" id="id" placeholder="Distribuidor">
                         <input type="number" id="ip" placeholder="Precio $" step="0.01" required>
                         <input type="number" id="ic" placeholder="Cantidad" min="1" required>
@@ -164,7 +165,8 @@
                     </form>
                     <div class="scroll">
                         <table id="t-inv">
-                            <thead><tr><th>Producto</th><th>Distribuidor</th><th>Precio</th><th>Stock</th><th>Acción</th></tr></thead>
+                            <!-- AGREGAMOS LA COLUMNA CATEGORÍA EN LA TABLA -->
+                            <thead><tr><th>Producto</th><th>Categoría</th><th>Distribuidor</th><th>Precio</th><th>Stock</th><th>Acción</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>
