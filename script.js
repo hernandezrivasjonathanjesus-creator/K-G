@@ -293,7 +293,8 @@ async function cargarCobranza() {
 // FUNCIÓN PARA AUTOCOMPLETAR EL NOMBRE Y AGREGAR MÁS PRODUCTOS
 function agregarMasProductos(nombreCliente) {
     document.getElementById('cn').value = nombreCliente;
-    document.getElementById('cn').focus();
+    document.getElementById('cc').value = 1; // Resetea la cantidad a 1
+    document.getElementById('cl').focus(); // Enfoca el selector de productos
     alert(`Selecciona el nuevo producto en la lista y dale a "➕ Añadir". Luego presiona "Registrar Deuda Completa".`);
 }
 
@@ -323,6 +324,7 @@ async function generarNotaCliente(nombreCliente) {
     ventasCliente.forEach(v => {
         totalUSD += Number(v.total);
         abonadoUSD += Number(v.abonado);
+        // ESTILOS DE LA TABLA CORREGIDOS PARA QUE NO SE CORTE EL TOTAL
         htmlProductos += `
             <tr>
                 <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; word-break: break-word; text-align: left;">${v.producto}</td>
@@ -359,9 +361,10 @@ async function generarNotaCliente(nombreCliente) {
                 <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
                     <thead>
                         <tr style="background: #f8fafc;">
-                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 55%; color: #0f172a;">Producto</th>
+                            <!-- ANCHOS CORREGIDOS: 60%, 15% y 25% -->
+                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 60%; color: #0f172a;">Producto</th>
                             <th style="padding: 10px; text-align: center; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 15%; color: #0f172a;">Cant.</th>
-                            <th style="padding: 10px; text-align: right; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 30%; color: #0f172a;">Total USD</th>
+                            <th style="padding: 10px; text-align: right; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 25%; color: #0f172a;">Total USD</th>
                         </tr>
                     </thead>
                     <tbody>
