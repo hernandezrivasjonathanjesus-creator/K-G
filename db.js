@@ -5,7 +5,7 @@ const path = require('path');
 // 1. Definir ruta de la base de datos
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-// 2. Intentar usar la carpeta /data de Render (que suele ser persistente)
+// 2. Intentar usar la carpeta /data de Render (que es persistente)
 let dbDir;
 
 if (isProduction) {
@@ -20,7 +20,7 @@ try {
     fs.mkdirSync(dbDir, { recursive: true });
   }
 } catch (error) {
-  console.warn(`No se pudo crear la carpeta ${dbDir}, usando /tmp`);
+  console.warn(`⚠️ No se pudo crear la carpeta ${dbDir}, usando /tmp (LOS DATOS SE BORRARÁN AL REINICIAR)`);
   dbDir = '/tmp';
   if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
@@ -34,7 +34,7 @@ console.log(`📁 Base de datos ubicada en: ${dbPath}`);
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
-// 5. Crear las tablas
+// 5. Crear las tablas (CORREGIDO: Se quitó el comentario HTML que rompía el código)
 db.exec(`
   CREATE TABLE IF NOT EXISTS configuracion (
     clave TEXT PRIMARY KEY,
@@ -44,7 +44,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     empresa TEXT,
     producto TEXT,
-    categoria TEXT,  <!-- AQUÍ ESTÁ LA MAGIA -->
+    categoria TEXT,
     distribuidor TEXT,
     precio REAL,
     stock INTEGER
@@ -65,10 +65,16 @@ db.exec(`
 
 // 6. PARCHE DE MIGRACIÓN: Si tu base de datos ya existía sin la columna, esto la agrega sin borrar tus datos.
 try {
-    db.exec(`ALTER TABLE inventario ADD COLUMN categoria TEXT;`);
-    console.log("✅ Columna 'categoria' agregada a la base de datos exitosamente.");
+    // Verificamos si la columna existe consultando la estructura de la tabla
+    const tableInfo = db.prepare("PRAGMA table_info(inventario)").all();
+    const tieneCategoria = tableInfo.some(col => col.name === 'categoria');
+    
+    if (!tieneCategoria) {
+        db.exec(`ALTER TABLE inventario ADD COLUMN categoria TEXT;`);
+        console.log("✅ Columna 'categoria' agregada a la base de datos exitosamente.");
+    }
 } catch (e) {
-    // Si ya existe la columna, simplemente ignora el error
+    console.log("La columna 'categoria' ya existe o hubo un error menor:", e.message);
 }
 
 module.exports = db;

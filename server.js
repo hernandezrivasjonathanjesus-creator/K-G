@@ -10,15 +10,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// ============================================
-// CREACIÓN AUTOMÁTICA DE LA COLUMNA CATEGORÍA
-// ============================================
-try { 
-    db.prepare("ALTER TABLE inventario ADD COLUMN categoria TEXT").run(); 
-    console.log("Columna categoría creada o ya existía.");
-} catch(e) { 
-    // Si ya existe, no hace nada
-}
+// (El bloque de creación de la columna categoría ha sido eliminado de aquí porque ya se maneja de forma segura en db.js)
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || '9163487748:AAHv_6Utv1p-1feY7p_oyAsqfYImfkpKb0U';
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
@@ -151,6 +143,42 @@ app.put('/api/cobranza/:id/abono', (req, res) => {
 app.delete('/api/cobranza/:id', (req, res) => {
   db.prepare('DELETE FROM cobranza WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
+});
+
+// =========================================================
+// NUEVA RUTA: ELIMINAR TODA LA DEUDA DE UN CLIENTE Y DEVOLVER STOCK
+// =========================================================
+app.delete('/api/cobranza/cliente/:empresa/:cliente', (req, res) => {
+    const { empresa, cliente } = req.params;
+    
+    try {
+        // 1. Buscamos todas las deudas de este cliente
+        const deudas = db.prepare('SELECT * FROM cobranza WHERE empresa = ? AND LOWER(cliente) = LOWER(?)').all(empresa, cliente);
+
+        if (deudas.length === 0) {
+            return res.status(404).json({ ok: false, msg: 'No se encontraron deudas para este cliente' });
+        }
+
+        // 2. Usamos una transacción para que si algo falla, no se borre nada a medias
+        const eliminarDeudasYDevolverStock = db.transaction(() => {
+            const updateStock = db.prepare('UPDATE inventario SET stock = stock + ? WHERE producto = ? AND empresa = ?');
+            const deleteDeuda = db.prepare('DELETE FROM cobranza WHERE id = ?');
+
+            deudas.forEach(d => {
+                // Devolver el stock del producto
+                updateStock.run(d.cantidad, d.producto, empresa);
+                // Borrar la deuda
+                deleteDeuda.run(d.id);
+            });
+        });
+
+        eliminarDeudasYDevolverStock();
+        res.json({ ok: true, msg: 'Deuda eliminada y stock devuelto correctamente' });
+
+    } catch (error) {
+        console.error("Error al eliminar cliente:", error);
+        res.status(500).json({ ok: false, msg: 'Error en el servidor al eliminar' });
+    }
 });
 
 app.listen(PORT, () => console.log(`✅ Servidor en puerto ${PORT}`));

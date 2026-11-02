@@ -163,6 +163,10 @@
                         <label style="font-weight: bold; color: var(--primary);">Filtrar por Categoría:</label>
                         <select id="filtro-categoria" onchange="filtrarInventario()" style="padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text-main); width: 100%; max-width: 300px;">
                             <option value="Todas">Todas las categorías</option>
+                            <option value="Maquillaje">Maquillaje</option>
+                            <option value="Cabello">Cabello</option>
+                            <option value="Cuidado Personal">Cuidado Personal</option>
+                            <option value="General">General</option>
                         </select>
                     </div>
 
@@ -203,7 +207,7 @@
 
                     <div class="scroll">
                         <table id="t-cob">
-                            <thead><tr><th>Cliente</th><th>Productos</th><th>Total $</th><th>Abonado</th><th>Resta</th><th>Referencia</th><th>Acción</th></tr></thead>
+                            <thead><tr><th>Cliente</th><th>Productos</th><th>Total $</th><th>Abonado</th><th>Resta</th><th>Referencia</th><th style="min-width: 250px;">Acción</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>

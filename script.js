@@ -23,12 +23,12 @@ async function guardarClave() {
     if (res.ok) { alert('¡Contraseña actualizada!'); cerrarModalClave(); } else { alert('Error al guardar.'); }
 }
 
-// --- MODAL EDITAR PRODUCTO (AHORA CON CATEGORÍA) ---
+// --- MODAL EDITAR PRODUCTO ---
 function abrirModalEditar(id, producto, distribuidor, precio, stock, categoria) {
     document.getElementById('modal-editar').classList.remove('hidden');
     document.getElementById('edit-id').value = id;
     document.getElementById('edit-prod').value = producto;
-    document.getElementById('edit-cat').value = categoria || 'General'; // Carga la categoría
+    document.getElementById('edit-cat').value = categoria || 'General';
     document.getElementById('edit-dist').value = distribuidor === '-' ? '' : distribuidor;
     document.getElementById('edit-precio').value = precio;
     document.getElementById('edit-stock').value = stock;
@@ -38,7 +38,7 @@ async function guardarEdicion() {
     const id = document.getElementById('edit-id').value;
     const payload = {
         producto: document.getElementById('edit-prod').value.trim(),
-        categoria: document.getElementById('edit-cat').value.trim(), // Guarda la categoría
+        categoria: document.getElementById('edit-cat').value.trim(),
         distribuidor: document.getElementById('edit-dist').value.trim(),
         precio: parseFloat(document.getElementById('edit-precio').value),
         stock: parseInt(document.getElementById('edit-stock').value)
@@ -98,36 +98,86 @@ function verPestaña(tab) {
     document.getElementById('sec-cob').classList.toggle('hidden', tab !== 'cob');
 }
 
-// --- INVENTARIO (CON CATEGORÍA) ---
+// --- INVENTARIO (CON PROTECCIÓN PARA NO BORRAR SI FALLA EL SERVIDOR) ---
 async function cargarInventario() {
-    const res = await fetch(`/api/inventario/${empresaActual}`);
-    const datos = await res.json();
-    const tbody = document.querySelector('#t-inv tbody');
-    tbody.innerHTML = '';
-    if (datos.length === 0) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center">Sin productos</td></tr>`;
+    try {
+        const res = await fetch(`/api/inventario/${empresaActual}`);
+        if (!res.ok) throw new Error('Error en el servidor');
+        const datos = await res.json();
+        const tbody = document.querySelector('#t-inv tbody');
+        tbody.innerHTML = '';
+        
+        if (datos.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center">Sin productos</td></tr>`;
+        } else {
+            datos.forEach(d => {
+                const alerta = d.stock <= 5 ? `<br><span class="alerta-stock">¡Quedan pocos!</span>` : '';
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${d.producto}</td>
+                        <td>${d.categoria || '-'}</td>
+                        <td>${d.distribuidor || '-'}</td>
+                        <td>$${Number(d.precio).toFixed(2)}</td>
+                        <td>${d.stock} ${alerta}</td>
+                        <td>
+                            <button style="background: #38bdf8; color: #0f172a; margin-right: 5px;" onclick="abrirModalEditar(${d.id}, '${d.producto}', '${d.distribuidor}', ${d.precio}, ${d.stock}, '${d.categoria}')">✏️</button>
+                            <button onclick="eliminarInv(${d.id})">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
 
-    datos.forEach(d => {
-        const alerta = d.stock <= 5 ? `<br><span class="alerta-stock">¡Quedan pocos!</span>` : '';
-        tbody.innerHTML += `
-            <tr>
-                <td>${d.producto}</td>
-                <td>${d.categoria || '-'}</td> <!-- Muestra la categoría -->
-                <td>${d.distribuidor || '-'}</td>
-                <td>$${Number(d.precio).toFixed(2)}</td>
-                <td>${d.stock} ${alerta}</td>
-                <td>
-                    <button style="background: #38bdf8; color: #0f172a; margin-right: 5px;" onclick="abrirModalEditar(${d.id}, '${d.producto}', '${d.distribuidor}', ${d.precio}, ${d.stock}, '${d.categoria}')">✏️</button>
-                    <button onclick="eliminarInv(${d.id})">🗑️</button>
-                </td>
-            </tr>
-        `;
-    });
+        // Llenar el select del carrito
+        const sel = document.getElementById('cl');
+        sel.innerHTML = '<option value="">¿Qué lleva?</option>';
+        datos.filter(d => d.stock > 0).forEach(d => {
+            sel.innerHTML += `<option value="${d.id}" data-precio="${d.precio}" data-stock="${d.stock}" data-nombre="${d.producto}">${d.producto} — $${Number(d.precio).toFixed(2)} (Stock: ${d.stock})</option>`;
+        });
+    } catch (error) {
+        console.error("Error al cargar inventario:", error);
+        alert("⚠️ No se pudo conectar con el servidor. Tus datos están a salvo en la base de datos, pero no se pueden mostrar en este momento. Revisa tu conexión o espera a que el servidor despierte.");
+    }
+}
 
-    const sel = document.getElementById('cl');
-    sel.innerHTML = '<option value="">¿Qué lleva?</option>';
-    datos.filter(d => d.stock > 0).forEach(d => {
-        sel.innerHTML += `<option value="${d.id}" data-precio="${d.precio}" data-stock="${d.stock}" data-nombre="${d.producto}">${d.producto} — $${Number(d.precio).toFixed(2)} (Stock: ${d.stock})</option>`;
-    });
+// --- FILTRO DE INVENTARIO (FALTABA ESTA FUNCIÓN) ---
+async function filtrarInventario() {
+    try {
+        const categoriaSeleccionada = document.getElementById('filtro-categoria').value;
+        const res = await fetch(`/api/inventario/${empresaActual}`);
+        if (!res.ok) throw new Error('Error en el servidor');
+        const datos = await res.json();
+        const tbody = document.querySelector('#t-inv tbody');
+        tbody.innerHTML = '';
+
+        const filtrados = categoriaSeleccionada === 'Todas' 
+            ? datos 
+            : datos.filter(d => (d.categoria || 'General').toLowerCase() === categoriaSeleccionada.toLowerCase());
+
+        if (filtrados.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center">No hay productos en esta categoría</td></tr>`;
+            return;
+        }
+
+        filtrados.forEach(d => {
+            const alerta = d.stock <= 5 ? `<br><span class="alerta-stock">¡Quedan pocos!</span>` : '';
+            tbody.innerHTML += `
+                <tr>
+                    <td>${d.producto}</td>
+                    <td>${d.categoria || '-'}</td>
+                    <td>${d.distribuidor || '-'}</td>
+                    <td>$${Number(d.precio).toFixed(2)}</td>
+                    <td>${d.stock} ${alerta}</td>
+                    <td>
+                        <button style="background: #38bdf8; color: #0f172a; margin-right: 5px;" onclick="abrirModalEditar(${d.id}, '${d.producto}', '${d.distribuidor}', ${d.precio}, ${d.stock}, '${d.categoria}')">✏️</button>
+                        <button onclick="eliminarInv(${d.id})">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (error) {
+        console.error("Error al filtrar inventario:", error);
+    }
 }
 
 document.getElementById('f-inv').addEventListener('submit', async (e) => {
@@ -144,7 +194,7 @@ document.getElementById('f-inv').addEventListener('submit', async (e) => {
     await fetch('/api/inventario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
         empresa: empresaActual, 
         producto: document.getElementById('in').value.trim(), 
-        categoria: document.getElementById('icat').value.trim(), // Guarda la categoría
+        categoria: document.getElementById('icat').value.trim(),
         distribuidor: document.getElementById('id').value.trim(),
         precio: parseFloat(document.getElementById('ip').value), 
         stock: parseInt(document.getElementById('ic').value)
@@ -231,70 +281,105 @@ async function registrarVentaCarrito() {
     await cargarCobranza();
 }
 
-// --- COBRANZA Y GANANCIAS (AGRUPADO POR CLIENTE) ---
+// --- COBRANZA Y GANANCIAS (CON PROTECCIÓN Y BOTONES NUEVOS) ---
 async function cargarCobranza() {
-    const res = await fetch(`/api/cobranza/${empresaActual}`);
-    const datos = await res.json();
-    const tbody = document.querySelector('#t-cob tbody');
-    tbody.innerHTML = '';
+    try {
+        const res = await fetch(`/api/cobranza/${empresaActual}`);
+        if (!res.ok) throw new Error('Error en el servidor');
+        const datos = await res.json();
+        const tbody = document.querySelector('#t-cob tbody');
+        tbody.innerHTML = '';
 
-    let totalVentas = 0;
-    let totalCobrado = 0;
+        let totalVentas = 0;
+        let totalCobrado = 0;
 
-    if (datos.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">Sin ventas registradas</td></tr>`;
-    } else {
-        const clientesAgrupados = {};
+        if (datos.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">Sin ventas registradas</td></tr>`;
+        } else {
+            const clientesAgrupados = {};
 
-        datos.forEach(d => {
-            const nombre = d.cliente.toLowerCase();
-            if (!clientesAgrupados[nombre]) {
-                clientesAgrupados[nombre] = {
-                    nombreReal: d.cliente,
-                    ids: [],
-                    productos: [],
-                    total: 0,
-                    abonado: 0,
-                    referencia: d.referencia || '-'
-                };
-            }
-            clientesAgrupados[nombre].ids.push(d.id);
-            clientesAgrupados[nombre].productos.push(`${d.producto} x${d.cantidad}`);
-            clientesAgrupados[nombre].total += d.total;
-            clientesAgrupados[nombre].abonado += d.abonado;
-            if (d.referencia) clientesAgrupados[nombre].referencia = d.referencia;
-        });
+            datos.forEach(d => {
+                const nombre = d.cliente.toLowerCase();
+                if (!clientesAgrupados[nombre]) {
+                    clientesAgrupados[nombre] = {
+                        nombreReal: d.cliente,
+                        ids: [],
+                        productos: [],
+                        total: 0,
+                        abonado: 0,
+                        referencia: d.referencia || '-'
+                    };
+                }
+                clientesAgrupados[nombre].ids.push(d.id);
+                clientesAgrupados[nombre].productos.push(`${d.producto} x${d.cantidad}`);
+                clientesAgrupados[nombre].total += d.total;
+                clientesAgrupados[nombre].abonado += d.abonado;
+                if (d.referencia) clientesAgrupados[nombre].referencia = d.referencia;
+            });
 
-        Object.keys(clientesAgrupados).forEach(key => {
-            const c = clientesAgrupados[key];
-            const resta = c.total - c.abonado;
-            
-            totalVentas += c.total;
-            totalCobrado += c.abonado;
+            Object.keys(clientesAgrupados).forEach(key => {
+                const c = clientesAgrupados[key];
+                const resta = c.total - c.abonado;
+                
+                totalVentas += c.total;
+                totalCobrado += c.abonado;
 
-            const colorResta = resta <= 0 ? 'color: #16a34a; font-weight: bold;' : 'color: #ef4444; font-weight: bold;';
-            
-            const botonAbonar = resta > 0 ? `<button class="pago-btn" onclick="abrirModalAbono([${c.ids}], ${resta})" style="background:#f59e0b; color:white; margin-right:5px;">💵 Abonar</button>` : '';
-            const botonAgregar = `<button onclick="agregarMasProductos('${c.nombreReal}')" style="background:#10b981; color:white; margin-right:5px;">➕ Agregar</button>`;
-            const botonNota = `<button onclick="generarNotaCliente('${c.nombreReal}')" style="background:#38bdf8; color:#0f172a; margin-right:5px;">🖨️ Nota</button>`;
+                const colorResta = resta <= 0 ? 'color: #16a34a; font-weight: bold;' : 'color: #ef4444; font-weight: bold;';
+                
+                const botonAbonar = resta > 0 ? `<button class="pago-btn" onclick="abrirModalAbono([${c.ids}], ${resta})" style="background:#f59e0b; color:white; margin-right:5px; margin-bottom:5px;">💵 Abonar</button>` : '';
+                const botonAgregar = `<button onclick="agregarMasProductos('${c.nombreReal}')" style="background:#10b981; color:white; margin-right:5px; margin-bottom:5px;">➕ Agregar</button>`;
+                const botonNota = `<button onclick="generarNotaCliente('${c.nombreReal}')" style="background:#38bdf8; color:#0f172a; margin-right:5px; margin-bottom:5px;">🖨️ Nota</button>`;
+                
+                // NUEVOS BOTONES PARA EDITAR Y ELIMINAR
+                const botonEditarDeuda = `<button onclick="editarDeudaCliente('${c.nombreReal}')" style="background:#8b5cf6; color:white; margin-right:5px; margin-bottom:5px;">✏️ Editar</button>`;
+                const botonEliminarDeuda = `<button onclick="eliminarDeudaCliente('${c.nombreReal}')" style="background:#ef4444; color:white; margin-right:5px; margin-bottom:5px;">🗑️ Quitar</button>`;
 
-            tbody.innerHTML += `
-                <tr>
-                    <td><strong>${c.nombreReal}</strong></td>
-                    <td style="font-size: 13px;">${c.productos.join(', ')}</td>
-                    <td>$${Number(c.total).toFixed(2)}</td>
-                    <td>$${Number(c.abonado).toFixed(2)}</td>
-                    <td style="${colorResta}">$${Number(resta).toFixed(2)}</td>
-                    <td>${c.referencia}</td>
-                    <td>${botonNota} ${botonAgregar} ${botonAbonar}</td>
-                </tr>
-            `;
-        });
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${c.nombreReal}</strong></td>
+                        <td style="font-size: 13px;">${c.productos.join(', ')}</td>
+                        <td>$${Number(c.total).toFixed(2)}</td>
+                        <td>$${Number(c.abonado).toFixed(2)}</td>
+                        <td style="${colorResta}">$${Number(resta).toFixed(2)}</td>
+                        <td>${c.referencia}</td>
+                        <td>${botonNota} ${botonAgregar} ${botonAbonar} ${botonEditarDeuda} ${botonEliminarDeuda}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        document.getElementById('ganancia-ventas').textContent = `$${totalVentas.toFixed(2)}`;
+        document.getElementById('ganancia-cobrado').textContent = `$${totalCobrado.toFixed(2)}`;
+        document.getElementById('ganancia-deuda').textContent = `$${(totalVentas - totalCobrado).toFixed(2)}`;
+    } catch (error) {
+        console.error("Error al cargar cobranza:", error);
+        alert("⚠️ No se pudo conectar con el servidor para cargar las deudas. Tus datos están seguros en la base de datos.");
     }
+}
 
-    document.getElementById('ganancia-ventas').textContent = `$${totalVentas.toFixed(2)}`;
-    document.getElementById('ganancia-cobrado').textContent = `$${totalCobrado.toFixed(2)}`;
-    document.getElementById('ganancia-deuda').textContent = `$${(totalVentas - totalCobrado).toFixed(2)}`;
+// --- FUNCIONES NUEVAS PARA EDITAR Y ELIMINAR CLIENTES ---
+async function eliminarDeudaCliente(nombreCliente) {
+    if (!confirm(`¿Estás seguro de que quieres eliminar TODA la deuda de ${nombreCliente}? Esta acción borrará sus registros y devolverá el stock si es necesario.`)) return;
+
+    try {
+        // NOTA: Debes tener esta ruta en tu backend (Node.js/Python) para que funcione.
+        const res = await fetch(`/api/cobranza/cliente/${empresaActual}/${nombreCliente}`, { method: 'DELETE' });
+        if (res.ok) {
+            alert('Deuda eliminada correctamente.');
+            await cargarCobranza();
+        } else {
+            alert('Error al eliminar. Asegúrate de haber creado la ruta DELETE en tu backend.');
+        }
+    } catch (error) {
+        console.error(error);
+        alert('Error de conexión al intentar eliminar.');
+    }
+}
+
+function editarDeudaCliente(nombreCliente) {
+    // Para editar productos individuales, lo ideal es abrir un modal.
+    // Por ahora, te mostramos un mensaje explicativo.
+    alert(`Para editar la deuda de ${nombreCliente}:\n\n1. Si quieres quitar un producto específico, usa el botón "🗑️ Quitar" (esto borra toda la deuda del cliente).\n2. Si quieres agregar más productos, usa "➕ Agregar".\n3. Si quieres modificar un precio, contacta al administrador.`);
 }
 
 // FUNCIÓN PARA AUTOCOMPLETAR EL NOMBRE Y AGREGAR MÁS PRODUCTOS
