@@ -1,6 +1,6 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs'); // <-- AGREGADO: Para leer el archivo JSON
+const productosFemely = require('./catalogo'); // <-- Importamos la lista
 const db = require('./db');
 const TelegramBot = require('node-telegram-bot-api');
 
@@ -50,6 +50,27 @@ bot.onText(/\/stock/, (msg) => {
   bot.sendMessage(msg.chat.id, mensaje, { parse_mode: 'Markdown' });
 });
 
+// --- RUTA SECRETA PARA CARGAR EL CATÁLOGO DE GOLPE ---
+app.get('/api/cargar-catalogo', (req, res) => {
+    try {
+        // Borramos los productos viejos para no duplicar
+        db.prepare("DELETE FROM inventario WHERE empresa = 'FEMELY'").run();
+        
+        // Insertamos los nuevos
+        const insert = db.prepare(`INSERT INTO inventario (empresa, producto, categoria, distribuidor, precio, stock) VALUES (?, ?, ?, ?, ?, ?)`);
+        const insertarMuchos = db.transaction((prods) => {
+            for (const p of prods) {
+                insert.run('FEMELY', p.n, p.c, 'FEMELY', p.p, 10);
+            }
+        });
+        insertarMuchos(productosFemely);
+        
+        res.send(`<h1>¡Éxito!</h1><p>Se cargaron ${productosFemely.length} productos en la base de datos de FEMELY.</p><p><a href="/">Volver al sistema</a></p>`);
+    } catch (error) {
+        res.status(500).send(`<h1>Error</h1><p>${error.message}</p>`);
+    }
+});
+
 // --- LOGIN ---
 app.post('/api/login', (req, res) => {
   const { empresa, password } = req.body;
@@ -74,17 +95,16 @@ app.get('/api/inventario/:empresa', (req, res) => {
 });
 
 app.post('/api/inventario', (req, res) => {
-  const { empresa, producto, distribuidor, precio, stock } = req.body;
-  db.prepare(`INSERT INTO inventario (empresa, producto, distribuidor, precio, stock) VALUES (?, ?, ?, ?, ?)`).run(empresa, producto, distribuidor || '', Number(precio), Number(stock));
+  const { empresa, producto, distribuidor, precio, stock, categoria } = req.body;
+  db.prepare(`INSERT INTO inventario (empresa, producto, distribuidor, precio, stock, categoria) VALUES (?, ?, ?, ?, ?, ?)`).run(empresa, producto, distribuidor || '', Number(precio), Number(stock), categoria || 'General');
   res.json({ ok: true });
 });
 
-// AQUI ESTA LA RUTA PARA EDITAR EL PRODUCTO
 app.put('/api/inventario/:id', (req, res) => {
-  const { producto, distribuidor, precio, stock } = req.body;
+  const { producto, distribuidor, precio, stock, categoria } = req.body;
   try {
-    db.prepare(`UPDATE inventario SET producto = ?, distribuidor = ?, precio = ?, stock = ? WHERE id = ?`)
-      .run(producto, distribuidor || '', Number(precio), Number(stock), req.params.id);
+    db.prepare(`UPDATE inventario SET producto = ?, distribuidor = ?, precio = ?, stock = ?, categoria = ? WHERE id = ?`)
+      .run(producto, distribuidor || '', Number(precio), Number(stock), categoria || 'General', req.params.id);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -93,43 +113,6 @@ app.delete('/api/inventario/:id', (req, res) => {
   db.prepare('DELETE FROM inventario WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
-
-// =========================================================
-// NUEVA RUTA: CARGA MASIVA DE PRODUCTOS (FEMELY)
-// =========================================================
-app.get('/api/carga-masiva-femely', (req, res) => {
-  try {
-    // Leer el archivo JSON con los productos
-    const rutaJson = path.join(__dirname, 'productos.json');
-    const data = fs.readFileSync(rutaJson, 'utf8');
-    const productos = JSON.parse(data);
-
-    // Preparar la consulta SQL para insertar
-    const insert = db.prepare(`INSERT INTO inventario (empresa, producto, distribuidor, precio, stock) VALUES (?, ?, ?, ?, ?)`);
-    
-    // Usar una transacción para que sea súper rápido y seguro
-    const insertarMuchos = db.transaction((prods) => {
-      for (const p of prods) {
-        insert.run('FEMELY', p.producto, p.distribuidor, p.precio, p.cantidad);
-      }
-    });
-
-    insertarMuchos(productos);
-
-    res.json({ 
-      ok: true, 
-      mensaje: `¡Éxito! Se han cargado ${productos.length} productos a la base de datos de FEMELY.` 
-    });
-  } catch (error) {
-    console.error("Error en carga masiva:", error);
-    res.status(500).json({ 
-      ok: false, 
-      error: "Ocurrió un error al cargar los productos.", 
-      detalle: error.message 
-    });
-  }
-});
-// =========================================================
 
 // --- COBRANZA ---
 app.get('/api/cobranza/:empresa', (req, res) => {
