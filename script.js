@@ -1,7 +1,7 @@
 let empresaActual = null;
 let fuenteActual = 16;
 let ventaSeleccionadaId = null;
-let carrito = []; // Aquí guardamos los productos temporalmente
+let carrito = []; 
 
 setInterval(() => {
     const clock = document.getElementById('clock');
@@ -195,13 +195,11 @@ function quitarDelCarrito(index) {
     actualizarCarritoVisual();
 }
 
-// REGISTRAR TODA LA DEUDA DEL CARRITO
 async function registrarVentaCarrito() {
     const cliente = document.getElementById('cn').value.trim();
     if (!cliente) return alert("Por favor, ingresa el nombre del cliente.");
     if (carrito.length === 0) return alert("El carrito está vacío.");
 
-    // Guardamos cada producto del carrito en tu base de datos
     for (let item of carrito) {
         await fetch('/api/cobranza', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
             empresa: empresaActual, 
@@ -214,7 +212,7 @@ async function registrarVentaCarrito() {
     }
 
     alert(`¡Deuda registrada para ${cliente}!`);
-    carrito = []; // Vaciamos el carrito
+    carrito = []; 
     document.getElementById('cn').value = '';
     actualizarCarritoVisual();
     
@@ -242,7 +240,6 @@ async function cargarCobranza() {
         const colorResta = resta <= 0 ? 'color: #16a34a; font-weight: bold;' : 'color: #ef4444; font-weight: bold;';
         const botonAbonar = resta > 0 ? `<button class="pago-btn" onclick="abrirModalAbono(${d.id}, ${resta})" style="background:#f59e0b; color:white; margin-right:5px;">💵 Abonar</button>` : '';
         
-        // Le pasamos solo el nombre del cliente al botón de la nota
         const botonNota = `<button onclick="generarNotaCliente('${d.cliente}')" style="background:#38bdf8; color:#0f172a; margin-right:5px;">🖨️ Nota</button>`;
 
         tbody.innerHTML += `
@@ -276,14 +273,16 @@ async function cargarBCV() {
     } catch { document.getElementById('bcv-val').textContent = 'N/D'; }
 }
 
-// --- GENERAR NOTA DE CRÉDITO (IMPRIMIBLE Y TOTALIZADA) ---
+// --- GENERAR NOTA DE CRÉDITO (TASA AUTOMÁTICA Y TELÉFONO AGREGADO) ---
 async function generarNotaCliente(nombreCliente) {
-    let tasaStr = prompt(`Ingrese la tasa del día (Bs/USD) para la nota de ${nombreCliente}:`);
-    if (!tasaStr) return; 
-    let tasa = parseFloat(tasaStr);
-    if (isNaN(tasa) || tasa <= 0) return alert("Por favor, ingrese una tasa válida.");
+    // 1. Tomamos la tasa directamente de la pantalla (sin preguntar)
+    let tasaTexto = document.getElementById('bcv-val').textContent.replace(' Bs', '');
+    let tasa = parseFloat(tasaTexto);
+    
+    // Si por alguna razón la tasa falló o dice N/D, usamos 1 para que no falle
+    if (isNaN(tasa) || tasa <= 0) tasa = 1; 
 
-    // Buscamos TODAS las deudas de este cliente y las unificamos
+    // 2. Buscamos TODAS las deudas de este cliente y las unificamos
     const res = await fetch(`/api/cobranza/${empresaActual}`);
     const todasLasVentas = await res.json();
     const ventasCliente = todasLasVentas.filter(v => v.cliente.toLowerCase() === nombreCliente.toLowerCase());
@@ -307,7 +306,7 @@ async function generarNotaCliente(nombreCliente) {
     let restaUSD = totalUSD - abonadoUSD;
     let restaBs = restaUSD * tasa;
 
-    // Diseño de la factura en formato "papel"
+    // 3. Diseño de la factura en formato "papel" con el teléfono 0424-602-73-93
     let facturaHTML = `
         <div style="text-align: center; margin-bottom: 20px;">
             <img src="/LOGO.png" alt="Logo" style="width: 120px; object-fit: contain;">
@@ -334,7 +333,13 @@ async function generarNotaCliente(nombreCliente) {
             <p style="margin: 5px 0; font-size: 16px; color: #16a34a;">Total Abonado (USD): <strong>$${abonadoUSD.toFixed(2)}</strong></p>
             <hr style="border: 0; border-top: 1px solid #cbd5e1; margin: 10px 0;">
             <p style="margin: 5px 0; font-size: 20px; color: #ef4444;">RESTA POR PAGAR (USD): <strong>$${restaUSD.toFixed(2)}</strong></p>
-            <p style="margin: 5px 0; font-size: 16px; color: #64748b;">Equivalente en Bs (Tasa ${tasa.toFixed(2)}): <strong>Bs. ${restaBs.toFixed(2)}</strong></p>
+            
+            <!-- AQUI PUEDES EDITAR LA TASA SI QUIERES CAMBIARLA EN LA NOTA DIRECTAMENTE -->
+            <p style="margin: 5px 0; font-size: 16px; color: #64748b;">
+                Equivalente en Bs (Tasa 
+                <input type="number" step="0.01" value="${tasa.toFixed(2)}" style="width: 80px; padding: 2px; font-size: 14px; border: 1px solid #cbd5e1;" onchange="cambiarTasaNota(this.value, ${restaUSD})"> 
+                ): <strong id="resta-bs">Bs. ${restaBs.toFixed(2)}</strong>
+            </p>
         </div>
 
         <div style="border: 2px dashed #38bdf8; padding: 15px; border-radius: 8px;">
@@ -342,7 +347,7 @@ async function generarNotaCliente(nombreCliente) {
             <p style="margin: 4px 0; font-size: 14px;"><strong>Titular:</strong> Fanielis Sánchez</p>
             <p style="margin: 4px 0; font-size: 14px;"><strong>C.I:</strong> V-16.438.319</p>
             <p style="margin: 4px 0; font-size: 14px;"><strong>Banco:</strong> Banesco</p>
-            <p style="margin: 4px 0; font-size: 14px;"><strong>Teléfono:</strong> 0414-0000000</p> <!-- PON EL TELÉFONO AQUÍ -->
+            <p style="margin: 4px 0; font-size: 14px;"><strong>Teléfono:</strong> 0424-602-73-93</p>
         </div>
 
         <div style="margin-top: 30px; text-align: center;" class="no-print">
@@ -352,7 +357,13 @@ async function generarNotaCliente(nombreCliente) {
         </div>
     `;
 
-    // Lo inyectamos en el modal que creamos en el HTML
     document.getElementById('contenido-nota').innerHTML = facturaHTML;
     document.getElementById('modal-nota').classList.remove('hidden');
+}
+
+// Función extra por si necesitas recalcular los bolívares a mano en la nota
+function cambiarTasaNota(nuevaTasa, restaUSD) {
+    let tasa = parseFloat(nuevaTasa);
+    if (isNaN(tasa) || tasa <= 0) return;
+    document.getElementById('resta-bs').textContent = `Bs. ${(restaUSD * tasa).toFixed(2)}`;
 }
