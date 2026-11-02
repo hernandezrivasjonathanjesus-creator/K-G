@@ -127,22 +127,35 @@
 
             <section id="sec-cob" class="tab-panel hidden">
                 <div class="card">
-                    <h3>Nueva Venta a Crédito</h3>
-                    <form id="f-cob" class="form-grid">
-                        <input type="text" id="cn" placeholder="Nombre del Cliente" required>
-                        <select id="cl" required><option value="">¿Qué lleva?</option></select>
-                        <input type="number" id="cc" placeholder="Cant." min="1" value="1" required>
-                        <button type="submit">Registrar Deuda</button>
-                    </form>
+                    <h3>Nueva Venta (Carrito de Cliente)</h3>
                     
-                    <!-- BOTÓN NUEVO PARA GENERAR LA NOTA -->
-                    <div style="margin: 15px 0; text-align: right;">
-                        <button onclick="generarNotaCliente()" style="background: #f59e0b; color: white; padding: 10px 20px; font-weight: bold;">🖨️ Generar Nota de Entrega (USD)</button>
+                    <!-- FORMULARIO DE AGREGAR AL CARRITO -->
+                    <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr auto; margin-bottom: 15px;">
+                        <input type="text" id="cn" placeholder="Nombre del Cliente" required>
+                        <select id="cl"><option value="">¿Qué lleva?</option></select>
+                        <input type="number" id="cc" placeholder="Cant." min="1" value="1">
+                        <button type="button" onclick="agregarAlCarrito()" style="background: #16a34a; color: white;">➕ Añadir</button>
                     </div>
+
+                    <!-- TABLA DEL CARRITO VISUAL -->
+                    <div class="scroll" style="margin-bottom: 15px; max-height: 200px;">
+                        <table id="t-carrito" style="background: rgba(255,255,255,0.05);">
+                            <thead><tr><th>Producto</th><th>Cant.</th><th>Precio $</th><th>Subtotal $</th><th>Quitar</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <div style="text-align: right; margin-bottom: 15px; font-weight: bold; color: var(--primary);">
+                        Total Carrito: <span id="total-carrito">$0.00</span>
+                    </div>
+
+                    <button onclick="registrarVentaCarrito()" style="width: 100%; background: #38bdf8; color: #0f172a; padding: 12px; font-weight: bold; font-size: 16px; margin-bottom: 10px;">
+                        Registrar Deuda Completa
+                    </button>
 
                     <div class="scroll">
                         <table id="t-cob">
-                            <thead><tr><th>Cliente</th><th>Producto</th><th>Total $</th><th>Abonado</th><th>Resta</th><th>Referencia</th><th>Acción</th></tr></thead>
+                            <thead><tr><th>Cliente</th><th>Productos</th><th>Total $</th><th>Abonado</th><th>Resta</th><th>Referencia</th><th>Acción</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>
