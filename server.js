@@ -53,17 +53,17 @@ bot.onText(/\/stock/, (msg) => {
 // --- RUTA SECRETA PARA CARGAR EL CATÁLOGO DE GOLPE ---
 app.get('/api/cargar-catalogo', (req, res) => {
     try {
-        // 1. CREAMOS LA COLUMNA CATEGORÍA SI NO EXISTE (La magia para que no falle)
+        // 1. CREAMOS LA COLUMNA CATEGORÍA SI NO EXISTE
         try { db.prepare("ALTER TABLE inventario ADD COLUMN categoria TEXT").run(); } catch(e) { /* Si ya existe, no hace nada */ }
 
         // 2. Borramos los productos viejos para no duplicar
         db.prepare("DELETE FROM inventario WHERE empresa = 'FEMELY'").run();
         
-        // 3. Insertamos los nuevos
+        // 3. Insertamos los nuevos con STOCK EN 0
         const insert = db.prepare(`INSERT INTO inventario (empresa, producto, categoria, distribuidor, precio, stock) VALUES (?, ?, ?, ?, ?, ?)`);
         const insertarMuchos = db.transaction((prods) => {
             for (const p of prods) {
-                insert.run('FEMELY', p.n, p.c, 'FEMELY', p.p, 10);
+                insert.run('FEMELY', p.n, p.c, 'FEMELY', p.p, 0);
             }
         });
         insertarMuchos(productosFemely);
@@ -92,9 +92,10 @@ app.post('/api/cambiar-clave', (req, res) => {
   res.json({ ok: true });
 });
 
-// --- INVENTARIO ---
+// --- INVENTARIO (ORDENADO POR CATEGORÍA Y NOMBRE) ---
 app.get('/api/inventario/:empresa', (req, res) => {
-  res.json(db.prepare('SELECT * FROM inventario WHERE empresa = ? ORDER BY id DESC').all(req.params.empresa));
+  // AQUÍ ESTÁ EL CAMBIO PARA QUE SE ORDENE POR CATEGORÍA
+  res.json(db.prepare('SELECT * FROM inventario WHERE empresa = ? ORDER BY categoria ASC, producto ASC').all(req.params.empresa));
 });
 
 app.post('/api/inventario', (req, res) => {
