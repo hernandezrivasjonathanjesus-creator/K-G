@@ -314,11 +314,11 @@ async function cargarBCV() {
     } catch { document.getElementById('bcv-val').textContent = 'N/D'; }
 }
 
-// --- GENERAR NOTA DE CRÉDITO (TASA AUTOMÁTICA Y TELÉFONO AGREGADO) ---
+// --- GENERAR NOTA DE CRÉDITO (DISEÑO AJUSTADO PARA QUE TODO QUEPA) ---
 async function generarNotaCliente(nombreCliente) {
-    let tasaTexto = document.getElementById('bcv-val').textContent.replace(' Bs', '');
+    let tasaTexto = document.getElementById('bcv-val').textContent.replace(' Bs', '').replace(',', '.');
     let tasa = parseFloat(tasaTexto);
-    if (isNaN(tasa) || tasa <= 0) tasa = 1; 
+    if (isNaN(tasa) || tasa <= 0) tasa = 1;
 
     const res = await fetch(`/api/cobranza/${empresaActual}`);
     const todasLasVentas = await res.json();
@@ -327,15 +327,15 @@ async function generarNotaCliente(nombreCliente) {
     let htmlProductos = '';
     let totalUSD = 0;
     let abonadoUSD = 0;
-    
+
     ventasCliente.forEach(v => {
-        totalUSD += v.total;
-        abonadoUSD += v.abonado;
+        totalUSD += Number(v.total);
+        abonadoUSD += Number(v.abonado);
         htmlProductos += `
             <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${v.producto}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${v.cantidad}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">$${Number(v.total).toFixed(2)}</td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e2e8f0; font-size: 13px; word-break: break-word;">${v.producto}</td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: center;">${v.cantidad}</td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: right; white-space: nowrap;">$${Number(v.total).toFixed(2)}</td>
             </tr>
         `;
     });
@@ -344,51 +344,74 @@ async function generarNotaCliente(nombreCliente) {
     let restaBs = restaUSD * tasa;
 
     let facturaHTML = `
-        <div style="text-align: center; margin-bottom: 20px;">
-            <img src="/LOGO.png" alt="Logo" style="width: 120px; object-fit: contain;">
-            <h2 style="margin: 10px 0 5px 0; color: #0f172a;">NOTA DE CRÉDITO / ESTADO DE CUENTA</h2>
-            <p style="margin: 0; color: #64748b;">Empresa: ${empresaActual} | Fecha: ${new Date().toLocaleDateString('es-VE')}</p>
-            <p style="margin: 5px 0; font-weight: bold; font-size: 18px;">Cliente: ${nombreCliente.toUpperCase()}</p>
-        </div>
+        <div style="
+            width: 100%;
+            max-width: 780px;
+            margin: 0 auto;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #0f172a;
+            box-sizing: border-box;
+            padding: 10px 15px;
+        ">
+            <!-- ENCABEZADO -->
+            <div style="text-align: center; margin-bottom: 15px;">
+                <img src="/LOGO.png" alt="Logo" style="width: 100px; max-height: 90px; object-fit: contain;">
+                <h2 style="margin: 8px 0 4px 0; color: #0f172a; font-size: 20px;">NOTA DE CRÉDITO / ESTADO DE CUENTA</h2>
+                <p style="margin: 0; color: #64748b; font-size: 13px;">Empresa: ${empresaActual} | Fecha: ${new Date().toLocaleDateString('es-VE')}</p>
+                <p style="margin: 6px 0 0 0; font-weight: bold; font-size: 16px;">Cliente: ${nombreCliente.toUpperCase()}</p>
+            </div>
 
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-            <thead>
-                <tr style="background: #f1f5f9;">
-                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #38bdf8;">Producto</th>
-                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #38bdf8;">Cant.</th>
-                    <th style="padding: 10px; text-align: right; border-bottom: 2px solid #38bdf8;">Total USD</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${htmlProductos}
-            </tbody>
-        </table>
+            <!-- TABLA PRODUCTOS -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; table-layout: fixed;">
+                <thead>
+                    <tr style="background: #f1f5f9;">
+                        <th style="padding: 8px; text-align: left; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 60%;">Producto</th>
+                        <th style="padding: 8px; text-align: center; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 15%;">Cant.</th>
+                        <th style="padding: 8px; text-align: right; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 25%;">Total USD</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${htmlProductos || '<tr><td colspan="3" style="text-align:center; padding:10px; color:#64748b;">Sin productos</td></tr>'}
+                </tbody>
+            </table>
 
-        <div style="text-align: right; margin-bottom: 20px; padding: 15px; background: #f8fafc; border-radius: 8px;">
-            <p style="margin: 5px 0; font-size: 16px;">Total Deuda (USD): <strong>$${totalUSD.toFixed(2)}</strong></p>
-            <p style="margin: 5px 0; font-size: 16px; color: #16a34a;">Total Abonado (USD): <strong>$${abonadoUSD.toFixed(2)}</strong></p>
-            <hr style="border: 0; border-top: 1px solid #cbd5e1; margin: 10px 0;">
-            <p style="margin: 5px 0; font-size: 20px; color: #ef4444;">RESTA POR PAGAR (USD): <strong>$${restaUSD.toFixed(2)}</strong></p>
-            
-            <p style="margin: 5px 0; font-size: 16px; color: #64748b;">
-                Equivalente en Bs (Tasa 
-                <input type="number" step="0.01" value="${tasa.toFixed(2)}" style="width: 80px; padding: 2px; font-size: 14px; border: 1px solid #cbd5e1;" onchange="cambiarTasaNota(this.value, ${restaUSD})"> 
-                ): <strong id="resta-bs">Bs. ${restaBs.toFixed(2)}</strong>
-            </p>
-        </div>
+            <!-- TOTALES -->
+            <div style="
+                text-align: right;
+                margin-bottom: 15px;
+                padding: 12px;
+                background: #f8fafc;
+                border-radius: 8px;
+                border: 1px solid #e2e8f0;
+            ">
+                <p style="margin: 4px 0; font-size: 14px;">Total Deuda (USD): <strong>$${totalUSD.toFixed(2)}</strong></p>
+                <p style="margin: 4px 0; font-size: 14px; color: #16a34a;">Total Abonado (USD): <strong>$${abonadoUSD.toFixed(2)}</strong></p>
+                <hr style="border: 0; border-top: 1px solid #cbd5e1; margin: 8px 0;">
+                <p style="margin: 4px 0; font-size: 17px; color: #ef4444;">RESTA POR PAGAR (USD): <strong>$${restaUSD.toFixed(2)}</strong></p>
+                <p style="margin: 4px 0; font-size: 14px; color: #64748b;">
+                    Equivalente en Bs (Tasa
+                    <input type="number" step="0.01" value="${tasa.toFixed(2)}"
+                        style="width: 70px; padding: 2px 4px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: right;"
+                        onchange="cambiarTasaNota(this.value, ${restaUSD})">
+                    ): <strong id="resta-bs">Bs. ${restaBs.toFixed(2)}</strong>
+                </p>
+            </div>
 
-        <div style="border: 2px dashed #38bdf8; padding: 15px; border-radius: 8px;">
-            <h4 style="margin: 0 0 10px 0; color: #0f172a;">Datos para Pago Móvil</h4>
-            <p style="margin: 4px 0; font-size: 14px;"><strong>Titular:</strong> Fanielis Sánchez</p>
-            <p style="margin: 4px 0; font-size: 14px;"><strong>C.I:</strong> V-16.438.319</p>
-            <p style="margin: 4px 0; font-size: 14px;"><strong>Banco:</strong> Banesco</p>
-            <p style="margin: 4px 0; font-size: 14px;"><strong>Teléfono:</strong> 0424-602-73-93</p>
-        </div>
+            <!-- DATOS DE PAGO -->
+            <div style="border: 2px dashed #38bdf8; padding: 12px 15px; border-radius: 8px;">
+                <h4 style="margin: 0 0 8px 0; color: #0f172a; font-size: 14px;">Datos para Pago Móvil</h4>
+                <p style="margin: 3px 0; font-size: 13px;"><strong>Titular:</strong> Fanielis Sánchez</p>
+                <p style="margin: 3px 0; font-size: 13px;"><strong>C.I:</strong> V-16.438.319</p>
+                <p style="margin: 3px 0; font-size: 13px;"><strong>Banco:</strong> Banesco</p>
+                <p style="margin: 3px 0; font-size: 13px;"><strong>Teléfono:</strong> 0424-602-73-93</p>
+            </div>
 
-        <div style="margin-top: 30px; text-align: center;" class="no-print">
-            <button onclick="window.print()" style="background: #16a34a; color: white; padding: 12px 30px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">
-                🖨️ Imprimir Nota de Crédito
-            </button>
+            <!-- BOTÓN IMPRIMIR -->
+            <div style="margin-top: 20px; text-align: center;" class="no-print">
+                <button onclick="window.print()" style="background: #16a34a; color: white; padding: 10px 25px; border: none; border-radius: 5px; font-size: 14px; cursor: pointer;">
+                    🖨️ Imprimir Nota de Crédito
+                </button>
+            </div>
         </div>
     `;
 
