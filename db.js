@@ -1,13 +1,11 @@
 require('dotenv').config();
 const { createClient } = require('@libsql/client');
 
-// Conexión a Turso usando las variables de entorno de Render
 const db = createClient({
   url: process.env.TURSO_DATABASE_URL,
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
-// Función para crear las tablas si no existen al arrancar
 async function initDB() {
   try {
     await db.batch([
