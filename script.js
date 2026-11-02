@@ -11,9 +11,9 @@ async function fetchConReintento(url, opciones = {}, intentos = 3) {
             if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             return res;
         } catch (error) {
-            if (i === intentos - 1) throw error; // Si es el último intento, lanza el error
+            if (i === intentos - 1) throw error;
             console.log(`Servidor dormido o sin conexión. Reintentando en 3 segundos... (Intento ${i + 1}/${intentos})`);
-            await new Promise(resolve => setTimeout(resolve, 3000)); // Espera 3 segundos
+            await new Promise(resolve => setTimeout(resolve, 3000));
         }
     }
 }
@@ -90,15 +90,15 @@ async function verificar() {
     const empresa = document.getElementById('empresa-select').value;
     const password = document.getElementById('pass').value;
     const errBox = document.getElementById('login-error');
-    errBox.textContent = 'Conectando con el servidor...'; // Mensaje de espera
-    errBox.style.color = '#38bdf8'; // Color azul para avisar
+    errBox.textContent = 'Conectando con el servidor...'; 
+    errBox.style.color = '#38bdf8'; 
 
     try {
         const res = await fetchConReintento('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ empresa, password }) });
         const data = await res.json();
         if (!data.ok) { 
             errBox.textContent = data.msg || 'Error de acceso'; 
-            errBox.style.color = '#ef4444'; // Rojo para error
+            errBox.style.color = '#ef4444';
             return; 
         }
 
@@ -121,25 +121,51 @@ function verPestana(tab) {
     document.getElementById('sec-cob').classList.toggle('hidden', tab !== 'cob');
 }
 
-// --- INVENTARIO ---
+// --- INVENTARIO (CON TOTAL, BS Y STOCK 0 AUTOMATICO) ---
 async function cargarInventario() {
     try {
         const res = await fetchConReintento(`/api/inventario/${empresaActual}`);
         const datos = await res.json();
         const tbody = document.querySelector('#t-inv tbody');
         tbody.innerHTML = '';
-        
+
+        // Obtener tasa BCV
+        let tasaBCV = 1;
+        try {
+            const resBCV = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+            const dataBCV = await resBCV.json();
+            tasaBCV = Number(dataBCV.promedio) || 1;
+        } catch (e) { }
+
+        let totalInventarioUSD = 0; // Acumulador para el total
+
         if (datos.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center">Sin productos</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">Sin productos</td></tr>`;
         } else {
-            datos.forEach(d => {
+            for (let d of datos) {
+                // Reiniciar stock a 0 automáticamente
+                if (d.stock > 0) {
+                    await fetchConReintento(`/api/inventario/${d.id}`, { 
+                        method: 'PUT', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({ ...d, stock: 0 }) 
+                    });
+                    d.stock = 0; 
+                }
+
                 const alerta = d.stock <= 5 ? `<br><span class="alerta-stock">¡Quedan pocos!</span>` : '';
+                const precioBs = (Number(d.precio) * tasaBCV).toFixed(2); 
+                
+                // Sumar al total (Precio * Cantidad en Stock)
+                totalInventarioUSD += (Number(d.precio) * d.stock);
+
                 tbody.innerHTML += `
                     <tr>
                         <td>${d.producto}</td>
                         <td>${d.categoria || '-'}</td>
                         <td>${d.distribuidor || '-'}</td>
                         <td>$${Number(d.precio).toFixed(2)}</td>
+                        <td>Bs. ${precioBs}</td>
                         <td>${d.stock} ${alerta}</td>
                         <td>
                             <button style="background: #38bdf8; color: #0f172a; margin-right: 5px;" onclick="abrirModalEditar(${d.id}, '${d.producto}', '${d.distribuidor}', ${d.precio}, ${d.stock}, '${d.categoria}')">✏️</button>
@@ -147,8 +173,11 @@ async function cargarInventario() {
                         </td>
                     </tr>
                 `;
-            });
+            }
         }
+
+        // Mostrar el total en la caja de arriba
+        document.getElementById('total-inventario').textContent = `$${totalInventarioUSD.toFixed(2)}`;
 
         const sel = document.getElementById('cl');
         sel.innerHTML = '<option value="">¿Qué lleva?</option>';
@@ -161,7 +190,7 @@ async function cargarInventario() {
     }
 }
 
-// --- FILTRO DE INVENTARIO MEJORADO ---
+// --- FILTRO DE INVENTARIO MEJORADO (CON PRECIOS EN BS) ---
 async function filtrarInventario() {
     try {
         const categoriaSeleccionada = document.getElementById('filtro-categoria').value;
@@ -170,7 +199,13 @@ async function filtrarInventario() {
         const tbody = document.querySelector('#t-inv tbody');
         tbody.innerHTML = '';
 
-        // Filtro inteligente: Busca si el texto del filtro está dentro de la categoría del producto
+        let tasaBCV = 1;
+        try {
+            const resBCV = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+            const dataBCV = await resBCV.json();
+            tasaBCV = Number(dataBCV.promedio) || 1;
+        } catch (e) { }
+
         const filtrados = categoriaSeleccionada === 'Todas' 
             ? datos 
             : datos.filter(d => {
@@ -180,18 +215,25 @@ async function filtrarInventario() {
             });
 
         if (filtrados.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center">No hay productos en esta categoría</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">No hay productos en esta categoría</td></tr>`;
             return;
         }
 
+        let totalInventarioUSD = 0;
+
         filtrados.forEach(d => {
             const alerta = d.stock <= 5 ? `<br><span class="alerta-stock">¡Quedan pocos!</span>` : '';
+            const precioBs = (Number(d.precio) * tasaBCV).toFixed(2); 
+            
+            totalInventarioUSD += (Number(d.precio) * d.stock);
+
             tbody.innerHTML += `
                 <tr>
                     <td>${d.producto}</td>
                     <td>${d.categoria || '-'}</td>
                     <td>${d.distribuidor || '-'}</td>
                     <td>$${Number(d.precio).toFixed(2)}</td>
+                    <td>Bs. ${precioBs}</td>
                     <td>${d.stock} ${alerta}</td>
                     <td>
                         <button style="background: #38bdf8; color: #0f172a; margin-right: 5px;" onclick="abrirModalEditar(${d.id}, '${d.producto}', '${d.distribuidor}', ${d.precio}, ${d.stock}, '${d.categoria}')">✏️</button>
@@ -200,6 +242,9 @@ async function filtrarInventario() {
                 </tr>
             `;
         });
+
+        // Actualizar el total filtrado (opcional, si quieres que cambie según el filtro)
+        document.getElementById('total-inventario').textContent = `$${totalInventarioUSD.toFixed(2)}`;
     } catch (error) {
         console.error("Error al filtrar inventario:", error);
     }
