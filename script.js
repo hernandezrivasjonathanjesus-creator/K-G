@@ -121,7 +121,7 @@ function verPestana(tab) {
     document.getElementById('sec-cob').classList.toggle('hidden', tab !== 'cob');
 }
 
-// --- INVENTARIO (CON TOTAL, BS Y STOCK 0 AUTOMATICO) ---
+// --- INVENTARIO (CON TOTAL, BS Y CONTROL MANUAL DE STOCK) ---
 async function cargarInventario() {
     try {
         const res = await fetchConReintento(`/api/inventario/${empresaActual}`);
@@ -142,17 +142,9 @@ async function cargarInventario() {
         if (datos.length === 0) {
             tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">Sin productos</td></tr>`;
         } else {
-            for (let d of datos) {
-                // Reiniciar stock a 0 automáticamente
-                if (d.stock > 0) {
-                    await fetchConReintento(`/api/inventario/${d.id}`, { 
-                        method: 'PUT', 
-                        headers: { 'Content-Type': 'application/json' }, 
-                        body: JSON.stringify({ ...d, stock: 0 }) 
-                    });
-                    d.stock = 0; 
-                }
-
+            // AQUI ESTABA EL ERROR: Hemos eliminado el bloque que reiniciaba el stock a 0
+            // Ahora el sistema respeta la cantidad que tú guardes manualmente.
+            datos.forEach(d => {
                 const alerta = d.stock <= 5 ? `<br><span class="alerta-stock">¡Quedan pocos!</span>` : '';
                 const precioBs = (Number(d.precio) * tasaBCV).toFixed(2); 
                 
@@ -173,7 +165,7 @@ async function cargarInventario() {
                         </td>
                     </tr>
                 `;
-            }
+            });
         }
 
         // Mostrar el total en la caja de arriba
@@ -243,7 +235,7 @@ async function filtrarInventario() {
             `;
         });
 
-        // Actualizar el total filtrado (opcional, si quieres que cambie según el filtro)
+        // Actualizar el total filtrado
         document.getElementById('total-inventario').textContent = `$${totalInventarioUSD.toFixed(2)}`;
     } catch (error) {
         console.error("Error al filtrar inventario:", error);
