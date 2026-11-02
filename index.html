@@ -8,6 +8,11 @@
     <link rel="manifest" href="manifest.json">
 </head>
 <body>
+    <!-- VIDEO DE FONDO TRANSPARENTE -->
+    <video autoplay loop muted playsinline id="video-fondo">
+        <source src="video.mp4" type="video/mp4">
+    </video>
+
     <button id="btn-accesibilidad" onclick="toggleAccesibilidad()">♿ Accesibilidad</button>
     <div id="panel-accesibilidad" class="hidden">
         <h4>Colores</h4>
@@ -18,6 +23,20 @@
         <hr><h4>Texto</h4>
         <button onclick="cambiarFuente(1)">Aumentar 🔍+</button>
         <button onclick="cambiarFuente(-1)">Disminuir 🔍-</button>
+    </div>
+
+    <!-- MODAL EDITAR PRODUCTO -->
+    <div id="modal-editar" class="overlay hidden">
+        <div class="login-card">
+            <h2>Editar Producto</h2>
+            <input type="hidden" id="edit-id">
+            <input type="text" id="edit-prod" placeholder="Producto" required>
+            <input type="text" id="edit-dist" placeholder="Distribuidor">
+            <input type="number" id="edit-precio" placeholder="Precio $" step="0.01" required>
+            <input type="number" id="edit-stock" placeholder="Cantidad" min="1" required>
+            <button onclick="guardarEdicion()">Guardar Cambios</button>
+            <button onclick="cerrarModalEditar()" style="background: #ef4444; color: white; margin-top: 10px;">Cancelar</button>
+        </div>
     </div>
 
     <!-- MODAL CLAVE -->
@@ -31,7 +50,7 @@
         </div>
     </div>
 
-    <!-- MODAL ABONO (NUEVO) -->
+    <!-- MODAL ABONO -->
     <div id="modal-abono" class="overlay hidden">
         <div class="login-card">
             <h2>Registrar Pago</h2>
@@ -77,6 +96,15 @@
             <div class="bcv-tag" style="margin-right: 20px;">BCV: <span id="bcv-val">...</span></div>
         </nav>
 
+        <!-- CUADRO DE GANANCIAS -->
+        <div class="container" style="margin-top: 10px;">
+            <div class="card" style="background: var(--bg-card); border-left: 4px solid #16a34a; padding: 15px; display: flex; justify-content: space-around; text-align: center;">
+                <div><small style="color: var(--text-muted);">Total Ventas</small><h3 id="ganancia-ventas" style="color: #16a34a; margin:0;">$0.00</h3></div>
+                <div><small style="color: var(--text-muted);">Total Cobrado</small><h3 id="ganancia-cobrado" style="color: #38bdf8; margin:0;">$0.00</h3></div>
+                <div><small style="color: var(--text-muted);">Por Cobrar</small><h3 id="ganancia-deuda" style="color: #ef4444; margin:0;">$0.00</h3></div>
+            </div>
+        </div>
+
         <main class="container">
             <section id="sec-inv" class="tab-panel">
                 <div class="card">
@@ -88,7 +116,12 @@
                         <input type="number" id="ic" placeholder="Cantidad" min="1" required>
                         <button type="submit">Guardar</button>
                     </form>
-                    <div class="scroll"><table id="t-inv"><thead><tr><th>Producto</th><th>Distribuidor</th><th>Precio</th><th>Stock</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
+                    <div class="scroll">
+                        <table id="t-inv">
+                            <thead><tr><th>Producto</th><th>Distribuidor</th><th>Precio</th><th>Stock</th><th>Acción</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 

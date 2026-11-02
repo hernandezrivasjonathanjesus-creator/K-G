@@ -17,7 +17,6 @@ bot.onText(/\/start/, (msg) => {
 });
 
 bot.onText(/\/deudas/, (msg) => {
-  // Ahora busca las deudas donde el total sea mayor a lo abonado
   const deudas = db.prepare(`SELECT cliente, producto, total, abonado, (total - abonado) as resta FROM cobranza WHERE total > abonado ORDER BY fecha DESC`).all();
   if (deudas.length === 0) return bot.sendMessage(msg.chat.id, "✅ No hay deudas pendientes.");
   let mensaje = "📋 *DEUDAS PENDIENTES:*\n\n";
@@ -79,6 +78,16 @@ app.post('/api/inventario', (req, res) => {
   res.json({ ok: true });
 });
 
+// AQUI ESTA LA RUTA PARA EDITAR EL PRODUCTO
+app.put('/api/inventario/:id', (req, res) => {
+  const { producto, distribuidor, precio, stock } = req.body;
+  try {
+    db.prepare(`UPDATE inventario SET producto = ?, distribuidor = ?, precio = ?, stock = ? WHERE id = ?`)
+      .run(producto, distribuidor || '', Number(precio), Number(stock), req.params.id);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.delete('/api/inventario/:id', (req, res) => {
   db.prepare('DELETE FROM inventario WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
@@ -89,7 +98,6 @@ app.get('/api/cobranza/:empresa', (req, res) => {
   res.json(db.prepare('SELECT *, (total - abonado) as resta FROM cobranza WHERE empresa = ? ORDER BY id DESC').all(req.params.empresa));
 });
 
-// Registrar una nueva venta (deuda inicial)
 app.post('/api/cobranza', (req, res) => {
   const { empresa, cliente, producto, cantidad, precio_unitario, total } = req.body;
   const item = db.prepare('SELECT * FROM inventario WHERE id = ? AND empresa = ?').get(producto, empresa);
@@ -101,11 +109,9 @@ app.post('/api/cobranza', (req, res) => {
   res.json({ ok: true });
 });
 
-// Registrar un abono (pago del cliente)
 app.put('/api/cobranza/:id/abono', (req, res) => {
   const { abono, referencia } = req.body;
   const venta = db.prepare('SELECT * FROM cobranza WHERE id = ?').get(req.params.id);
-  
   const nuevoAbonado = Number(venta.abonado) + Number(abono);
   const nuevaReferencia = referencia ? referencia : venta.referencia;
 

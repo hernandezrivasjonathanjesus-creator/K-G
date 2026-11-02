@@ -7,16 +7,13 @@ setInterval(() => {
     if (clock) clock.textContent = new Date().toLocaleString('es-VE');
 }, 1000);
 
+// --- ACCESIBILIDAD ---
 function toggleAccesibilidad() { document.getElementById('panel-accesibilidad').classList.toggle('hidden'); }
 function cambiarTema(tema) { document.body.className = ''; if (tema !== 'default') document.body.classList.add(`theme-${tema}`); }
 function cambiarFuente(accion) { fuenteActual += (accion * 2); if (fuenteActual < 12) fuenteActual = 12; if (fuenteActual > 24) fuenteActual = 24; document.documentElement.style.fontSize = `${fuenteActual}px`; }
 
-// --- MODALES ---
-function abrirModalClave() {
-    document.getElementById('modal-clave').classList.remove('hidden');
-    document.getElementById('empresa-clave-txt').textContent = `Empresa: ${empresaActual}`;
-    document.getElementById('nueva-clave').value = '';
-}
+// --- MODAL CLAVE ---
+function abrirModalClave() { document.getElementById('modal-clave').classList.remove('hidden'); document.getElementById('empresa-clave-txt').textContent = `Empresa: ${empresaActual}`; document.getElementById('nueva-clave').value = ''; }
 function cerrarModalClave() { document.getElementById('modal-clave').classList.add('hidden'); }
 async function guardarClave() {
     const nueva = document.getElementById('nueva-clave').value;
@@ -25,24 +22,43 @@ async function guardarClave() {
     if (res.ok) { alert('¡Contraseña actualizada!'); cerrarModalClave(); } else { alert('Error al guardar.'); }
 }
 
+// --- MODAL EDITAR PRODUCTO ---
+function abrirModalEditar(id, producto, distribuidor, precio, stock) {
+    document.getElementById('modal-editar').classList.remove('hidden');
+    document.getElementById('edit-id').value = id;
+    document.getElementById('edit-prod').value = producto;
+    document.getElementById('edit-dist').value = distribuidor === '-' ? '' : distribuidor;
+    document.getElementById('edit-precio').value = precio;
+    document.getElementById('edit-stock').value = stock;
+}
+function cerrarModalEditar() { document.getElementById('modal-editar').classList.add('hidden'); }
+async function guardarEdicion() {
+    const id = document.getElementById('edit-id').value;
+    const payload = {
+        producto: document.getElementById('edit-prod').value.trim(),
+        distribuidor: document.getElementById('edit-dist').value.trim(),
+        precio: parseFloat(document.getElementById('edit-precio').value),
+        stock: parseInt(document.getElementById('edit-stock').value)
+    };
+    await fetch(`/api/inventario/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    cerrarModalEditar();
+    await cargarInventario();
+}
+
+// --- MODAL ABONO ---
 function abrirModalAbono(id, resta) {
     ventaSeleccionadaId = id;
     document.getElementById('modal-abono').classList.remove('hidden');
-    document.getElementById('abono-resta-txt').textContent = `Resta por pagar: $${resta}`;
-    document.getElementById('monto-abono').value = resta; // Sugiere pagar todo
+    document.getElementById('abono-resta-txt').textContent = `Resta por pagar: $${Number(resta).toFixed(2)}`;
+    document.getElementById('monto-abono').value = Number(resta).toFixed(2);
     document.getElementById('ref-abono').value = '';
 }
 function cerrarModalAbono() { document.getElementById('modal-abono').classList.add('hidden'); }
 async function guardarAbono() {
     const monto = parseFloat(document.getElementById('monto-abono').value);
     const referencia = document.getElementById('ref-abono').value.trim();
-    
     if (monto <= 0) return alert('El monto debe ser mayor a 0');
-
-    await fetch(`/api/cobranza/${ventaSeleccionadaId}/abono`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ abono: monto, referencia: referencia })
-    });
+    await fetch(`/api/cobranza/${ventaSeleccionadaId}/abono`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ abono: monto, referencia: referencia }) });
     cerrarModalAbono();
     await cargarCobranza();
 }
@@ -85,7 +101,18 @@ async function cargarInventario() {
 
     datos.forEach(d => {
         const alerta = d.stock <= 5 ? `<br><span class="alerta-stock">¡Quedan pocos!</span>` : '';
-        tbody.innerHTML += `<tr><td>${d.producto}</td><td>${d.distribuidor || '-'}</td><td>$${Number(d.precio).toFixed(2)}</td><td>${d.stock} ${alerta}</td><td><button onclick="eliminarInv(${d.id})">🗑️</button></td></tr>`;
+        tbody.innerHTML += `
+            <tr>
+                <td>${d.producto}</td>
+                <td>${d.distribuidor || '-'}</td>
+                <td>$${Number(d.precio).toFixed(2)}</td>
+                <td>${d.stock} ${alerta}</td>
+                <td>
+                    <button style="background: #38bdf8; color: #0f172a; margin-right: 5px;" onclick="abrirModalEditar(${d.id}, '${d.producto}', '${d.distribuidor}', ${d.precio}, ${d.stock})">✏️</button>
+                    <button onclick="eliminarInv(${d.id})">🗑️</button>
+                </td>
+            </tr>
+        `;
     });
 
     const sel = document.getElementById('cl');
@@ -109,16 +136,23 @@ async function eliminarInv(id) {
     if (confirm('¿Eliminar producto?')) { await fetch(`/api/inventario/${id}`, { method: 'DELETE' }); await cargarInventario(); }
 }
 
-// --- COBRANZA ---
+// --- COBRANZA Y GANANCIAS ---
 async function cargarCobranza() {
     const res = await fetch(`/api/cobranza/${empresaActual}`);
     const datos = await res.json();
     const tbody = document.querySelector('#t-cob tbody');
     tbody.innerHTML = '';
+
+    let totalVentas = 0;
+    let totalCobrado = 0;
+
     if (datos.length === 0) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">Sin ventas registradas</td></tr>`;
 
     datos.forEach(d => {
         const resta = d.total - d.abonado;
+        totalVentas += d.total;
+        totalCobrado += d.abonado;
+
         const colorResta = resta <= 0 ? 'color: #16a34a; font-weight: bold;' : 'color: #ef4444; font-weight: bold;';
         const botonAbonar = resta > 0 ? `<button class="pago-btn" onclick="abrirModalAbono(${d.id}, ${resta})" style="background:#f59e0b; color:white;">💵 Abonar</button>` : '';
 
@@ -134,6 +168,11 @@ async function cargarCobranza() {
             </tr>
         `;
     });
+
+    // Actualizar el cuadro de ganancias
+    document.getElementById('ganancia-ventas').textContent = `$${totalVentas.toFixed(2)}`;
+    document.getElementById('ganancia-cobrado').textContent = `$${totalCobrado.toFixed(2)}`;
+    document.getElementById('ganancia-deuda').textContent = `$${(totalVentas - totalCobrado).toFixed(2)}`;
 }
 
 document.getElementById('f-cob').addEventListener('submit', async (e) => {
