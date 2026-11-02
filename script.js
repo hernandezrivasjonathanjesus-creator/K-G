@@ -47,7 +47,6 @@ async function guardarEdicion() {
 }
 
 // --- MODAL ABONO ---
-// Ahora recibe un arreglo de IDs (porque un cliente puede tener varios productos en la BD)
 function abrirModalAbono(ids, resta) {
     ventaSeleccionadaId = ids; 
     document.getElementById('modal-abono').classList.remove('hidden');
@@ -62,8 +61,6 @@ async function guardarAbono() {
     const referencia = document.getElementById('ref-abono').value.trim();
     if (monto <= 0) return alert('El monto debe ser mayor a 0');
 
-    // Si el cliente tiene varios productos, el abono se lo aplicamos al primero
-    // (En esta versión simple, el abono se le suma al primer producto de la lista)
     let primerId = Array.isArray(ventaSeleccionadaId) ? ventaSeleccionadaId[0] : ventaSeleccionadaId;
 
     await fetch(`/api/cobranza/${primerId}/abono`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ abono: monto, referencia: referencia }) });
@@ -240,7 +237,6 @@ async function cargarCobranza() {
     if (datos.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">Sin ventas registradas</td></tr>`;
     } else {
-        // AQUÍ AGRUPAMOS LOS DATOS POR CLIENTE
         const clientesAgrupados = {};
 
         datos.forEach(d => {
@@ -262,7 +258,6 @@ async function cargarCobranza() {
             if (d.referencia) clientesAgrupados[nombre].referencia = d.referencia;
         });
 
-        // Dibujamos una sola fila por cliente
         Object.keys(clientesAgrupados).forEach(key => {
             const c = clientesAgrupados[key];
             const resta = c.total - c.abonado;
@@ -273,10 +268,7 @@ async function cargarCobranza() {
             const colorResta = resta <= 0 ? 'color: #16a34a; font-weight: bold;' : 'color: #ef4444; font-weight: bold;';
             
             const botonAbonar = resta > 0 ? `<button class="pago-btn" onclick="abrirModalAbono([${c.ids}], ${resta})" style="background:#f59e0b; color:white; margin-right:5px;">💵 Abonar</button>` : '';
-            
-            // NUEVO BOTÓN PARA EDITAR / AGREGAR MÁS PRODUCTOS AL MISMO CLIENTE
             const botonAgregar = `<button onclick="agregarMasProductos('${c.nombreReal}')" style="background:#10b981; color:white; margin-right:5px;">➕ Agregar</button>`;
-            
             const botonNota = `<button onclick="generarNotaCliente('${c.nombreReal}')" style="background:#38bdf8; color:#0f172a; margin-right:5px;">🖨️ Nota</button>`;
 
             tbody.innerHTML += `
@@ -301,7 +293,7 @@ async function cargarCobranza() {
 // FUNCIÓN PARA AUTOCOMPLETAR EL NOMBRE Y AGREGAR MÁS PRODUCTOS
 function agregarMasProductos(nombreCliente) {
     document.getElementById('cn').value = nombreCliente;
-    document.getElementById('cn').focus(); // Pone el cursor en el nombre
+    document.getElementById('cn').focus();
     alert(`Selecciona el nuevo producto en la lista y dale a "➕ Añadir". Luego presiona "Registrar Deuda Completa".`);
 }
 
@@ -314,7 +306,7 @@ async function cargarBCV() {
     } catch { document.getElementById('bcv-val').textContent = 'N/D'; }
 }
 
-// --- GENERAR NOTA DE CRÉDITO (DISEÑO AJUSTADO PARA QUE TODO QUEPA) ---
+// --- GENERAR NOTA DE CRÉDITO CORREGIDA ---
 async function generarNotaCliente(nombreCliente) {
     let tasaTexto = document.getElementById('bcv-val').textContent.replace(' Bs', '').replace(',', '.');
     let tasa = parseFloat(tasaTexto);
@@ -333,9 +325,9 @@ async function generarNotaCliente(nombreCliente) {
         abonadoUSD += Number(v.abonado);
         htmlProductos += `
             <tr>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e2e8f0; font-size: 13px; word-break: break-word;">${v.producto}</td>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: center;">${v.cantidad}</td>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: right; white-space: nowrap;">$${Number(v.total).toFixed(2)}</td>
+                <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; word-break: break-word;">${v.producto}</td>
+                <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: center;">${v.cantidad}</td>
+                <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: right; white-space: nowrap;">$${Number(v.total).toFixed(2)}</td>
             </tr>
         `;
     });
@@ -346,69 +338,81 @@ async function generarNotaCliente(nombreCliente) {
     let facturaHTML = `
         <div style="
             width: 100%;
-            max-width: 780px;
+            max-width: 600px;
             margin: 0 auto;
-            font-family: Arial, Helvetica, sans-serif;
-            color: #0f172a;
+            font-family: Arial, sans-serif;
+            color: #1e293b;
             box-sizing: border-box;
-            padding: 10px 15px;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         ">
-            <!-- ENCABEZADO -->
-            <div style="text-align: center; margin-bottom: 15px;">
-                <img src="/LOGO.png" alt="Logo" style="width: 100px; max-height: 90px; object-fit: contain;">
-                <h2 style="margin: 8px 0 4px 0; color: #0f172a; font-size: 20px;">NOTA DE CRÉDITO / ESTADO DE CUENTA</h2>
-                <p style="margin: 0; color: #64748b; font-size: 13px;">Empresa: ${empresaActual} | Fecha: ${new Date().toLocaleDateString('es-VE')}</p>
-                <p style="margin: 6px 0 0 0; font-weight: bold; font-size: 16px;">Cliente: ${nombreCliente.toUpperCase()}</p>
+            <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #38bdf8; padding-bottom: 15px;">
+                <img src="/LOGO.png" alt="Logo" style="width: 100px; max-height: 80px; object-fit: contain;">
+                <h2 style="margin: 10px 0 4px 0; color: #0f172a; font-size: 18px; text-transform: uppercase;">Nota de Crédito</h2>
+                <p style="margin: 0; color: #64748b; font-size: 12px;">Empresa: <strong>${empresaActual}</strong> | Fecha: ${new Date().toLocaleDateString('es-VE')}</p>
+                <p style="margin: 8px 0 0 0; font-weight: bold; font-size: 15px;">Cliente: <span style="color: #0284c7;">${nombreCliente.toUpperCase()}</span></p>
             </div>
 
-            <!-- TABLA PRODUCTOS -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; table-layout: fixed;">
-                <thead>
-                    <tr style="background: #f1f5f9;">
-                        <th style="padding: 8px; text-align: left; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 60%;">Producto</th>
-                        <th style="padding: 8px; text-align: center; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 15%;">Cant.</th>
-                        <th style="padding: 8px; text-align: right; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 25%;">Total USD</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${htmlProductos || '<tr><td colspan="3" style="text-align:center; padding:10px; color:#64748b;">Sin productos</td></tr>'}
-                </tbody>
-            </table>
+            <div style="width: 100%; overflow-x: auto; margin-bottom: 20px;">
+                <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+                    <thead>
+                        <tr style="background: #f8fafc;">
+                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 55%; color: #0f172a;">Producto</th>
+                            <th style="padding: 10px; text-align: center; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 15%; color: #0f172a;">Cant.</th>
+                            <th style="padding: 10px; text-align: right; border-bottom: 2px solid #38bdf8; font-size: 13px; width: 30%; color: #0f172a;">Total USD</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${htmlProductos || '<tr><td colspan="3" style="text-align:center; padding:15px; color:#64748b;">Sin productos</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
 
-            <!-- TOTALES -->
             <div style="
-                text-align: right;
-                margin-bottom: 15px;
-                padding: 12px;
                 background: #f8fafc;
-                border-radius: 8px;
                 border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 15px;
+                margin-bottom: 20px;
             ">
-                <p style="margin: 4px 0; font-size: 14px;">Total Deuda (USD): <strong>$${totalUSD.toFixed(2)}</strong></p>
-                <p style="margin: 4px 0; font-size: 14px; color: #16a34a;">Total Abonado (USD): <strong>$${abonadoUSD.toFixed(2)}</strong></p>
-                <hr style="border: 0; border-top: 1px solid #cbd5e1; margin: 8px 0;">
-                <p style="margin: 4px 0; font-size: 17px; color: #ef4444;">RESTA POR PAGAR (USD): <strong>$${restaUSD.toFixed(2)}</strong></p>
-                <p style="margin: 4px 0; font-size: 14px; color: #64748b;">
-                    Equivalente en Bs (Tasa
-                    <input type="number" step="0.01" value="${tasa.toFixed(2)}"
-                        style="width: 70px; padding: 2px 4px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: right;"
-                        onchange="cambiarTasaNota(this.value, ${restaUSD})">
-                    ): <strong id="resta-bs">Bs. ${restaBs.toFixed(2)}</strong>
-                </p>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-size: 14px; color: #475569;">Total Deuda (USD):</span>
+                    <strong style="font-size: 14px;">$${totalUSD.toFixed(2)}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-size: 14px; color: #475569;">Total Abonado (USD):</span>
+                    <strong style="font-size: 14px; color: #16a34a;">$${abonadoUSD.toFixed(2)}</strong>
+                </div>
+                <hr style="border: 0; border-top: 1px dashed #cbd5e1; margin: 10px 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 15px; color: #ef4444; font-weight: bold;">RESTA POR PAGAR:</span>
+                    <strong style="font-size: 18px; color: #ef4444;">$${restaUSD.toFixed(2)}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #64748b; background: #e2e8f0; padding: 8px; border-radius: 4px;">
+                    <span>Equivalente en Bs. (Tasa)</span>
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <input type="number" step="0.01" value="${tasa.toFixed(2)}"
+                            style="width: 65px; padding: 4px; font-size: 12px; border: 1px solid #94a3b8; border-radius: 4px; text-align: right;"
+                            onchange="cambiarTasaNota(this.value, ${restaUSD})">
+                        <strong id="resta-bs" style="font-size: 14px; color: #0f172a;">Bs. ${restaBs.toFixed(2)}</strong>
+                    </div>
+                </div>
             </div>
 
-            <!-- DATOS DE PAGO -->
-            <div style="border: 2px dashed #38bdf8; padding: 12px 15px; border-radius: 8px;">
-                <h4 style="margin: 0 0 8px 0; color: #0f172a; font-size: 14px;">Datos para Pago Móvil</h4>
-                <p style="margin: 3px 0; font-size: 13px;"><strong>Titular:</strong> Fanielis Sánchez</p>
-                <p style="margin: 3px 0; font-size: 13px;"><strong>C.I:</strong> V-16.438.319</p>
-                <p style="margin: 3px 0; font-size: 13px;"><strong>Banco:</strong> Banesco</p>
-                <p style="margin: 3px 0; font-size: 13px;"><strong>Teléfono:</strong> 0424-602-73-93</p>
+            <div style="border: 2px dashed #38bdf8; padding: 15px; border-radius: 8px; background: #f0f9ff;">
+                <h4 style="margin: 0 0 10px 0; color: #0f172a; font-size: 14px; text-transform: uppercase;">Datos para Pago Móvil</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">
+                    <p style="margin: 0;"><strong>Titular:</strong> Fanielis Sánchez</p>
+                    <p style="margin: 0;"><strong>C.I:</strong> V-16.438.319</p>
+                    <p style="margin: 0;"><strong>Banco:</strong> Banesco</p>
+                    <p style="margin: 0;"><strong>Teléfono:</strong> 0424-602-73-93</p>
+                </div>
             </div>
 
-            <!-- BOTÓN IMPRIMIR -->
-            <div style="margin-top: 20px; text-align: center;" class="no-print">
-                <button onclick="window.print()" style="background: #16a34a; color: white; padding: 10px 25px; border: none; border-radius: 5px; font-size: 14px; cursor: pointer;">
+            <div style="margin-top: 25px; text-align: center;" class="no-print">
+                <button onclick="window.print()" style="background: #16a34a; color: white; padding: 12px 30px; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%;">
                     🖨️ Imprimir Nota de Crédito
                 </button>
             </div>
