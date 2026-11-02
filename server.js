@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs'); // <-- AGREGADO: Para leer el archivo JSON
 const db = require('./db');
 const TelegramBot = require('node-telegram-bot-api');
 
@@ -92,6 +93,43 @@ app.delete('/api/inventario/:id', (req, res) => {
   db.prepare('DELETE FROM inventario WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
+
+// =========================================================
+// NUEVA RUTA: CARGA MASIVA DE PRODUCTOS (FEMELY)
+// =========================================================
+app.get('/api/carga-masiva-femely', (req, res) => {
+  try {
+    // Leer el archivo JSON con los productos
+    const rutaJson = path.join(__dirname, 'productos.json');
+    const data = fs.readFileSync(rutaJson, 'utf8');
+    const productos = JSON.parse(data);
+
+    // Preparar la consulta SQL para insertar
+    const insert = db.prepare(`INSERT INTO inventario (empresa, producto, distribuidor, precio, stock) VALUES (?, ?, ?, ?, ?)`);
+    
+    // Usar una transacción para que sea súper rápido y seguro
+    const insertarMuchos = db.transaction((prods) => {
+      for (const p of prods) {
+        insert.run('FEMELY', p.producto, p.distribuidor, p.precio, p.cantidad);
+      }
+    });
+
+    insertarMuchos(productos);
+
+    res.json({ 
+      ok: true, 
+      mensaje: `¡Éxito! Se han cargado ${productos.length} productos a la base de datos de FEMELY.` 
+    });
+  } catch (error) {
+    console.error("Error en carga masiva:", error);
+    res.status(500).json({ 
+      ok: false, 
+      error: "Ocurrió un error al cargar los productos.", 
+      detalle: error.message 
+    });
+  }
+});
+// =========================================================
 
 // --- COBRANZA ---
 app.get('/api/cobranza/:empresa', (req, res) => {
