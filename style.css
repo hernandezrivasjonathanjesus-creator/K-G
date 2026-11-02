@@ -112,3 +112,15 @@ td button.pago-btn.pagado { background: var(--success); }
   #video-fondo { display: none; }
   body { background: var(--bg-main); }
 }
+
+/* --- SOLUCIÓN PARA LAS LETRAS NEGRAS EN EL MENÚ DE CATEGORÍAS --- */
+select option {
+    color: #000000 !important;
+    background-color: #ffffff !important;
+    font-weight: 500;
+}
+
+/* Opcional: Para que el select se vea mejor cuando está cerrado */
+select#filtro-categoria {
+    color: var(--text-main);
+}
