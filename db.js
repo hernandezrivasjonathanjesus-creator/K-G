@@ -6,7 +6,6 @@ const path = require('path');
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
 // 2. Intentar usar la carpeta /data de Render (que suele ser persistente)
-// Si no existe, la creamos.
 let dbDir;
 
 if (isProduction) {
@@ -15,13 +14,12 @@ if (isProduction) {
   dbDir = path.join(__dirname, 'data');
 }
 
-// 3. Crear la carpeta si no existe (esto evita errores)
+// 3. Crear la carpeta si no existe
 try {
   if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
   }
 } catch (error) {
-  // Si Render no nos deja crear /data, usamos /tmp como respaldo
   console.warn(`No se pudo crear la carpeta ${dbDir}, usando /tmp`);
   dbDir = '/tmp';
   if (!fs.existsSync(dbDir)) {
@@ -36,7 +34,7 @@ console.log(`📁 Base de datos ubicada en: ${dbPath}`);
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
-// 5. Crear las tablas si no existen (por si Render las borra)
+// 5. Crear las tablas
 db.exec(`
   CREATE TABLE IF NOT EXISTS configuracion (
     clave TEXT PRIMARY KEY,
@@ -46,6 +44,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     empresa TEXT,
     producto TEXT,
+    categoria TEXT,  <!-- AQUÍ ESTÁ LA MAGIA -->
     distribuidor TEXT,
     precio REAL,
     stock INTEGER
@@ -63,5 +62,13 @@ db.exec(`
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `);
+
+// 6. PARCHE DE MIGRACIÓN: Si tu base de datos ya existía sin la columna, esto la agrega sin borrar tus datos.
+try {
+    db.exec(`ALTER TABLE inventario ADD COLUMN categoria TEXT;`);
+    console.log("✅ Columna 'categoria' agregada a la base de datos exitosamente.");
+} catch (e) {
+    // Si ya existe la columna, simplemente ignora el error
+}
 
 module.exports = db;
