@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "main": "server.js",
   "engines": {
-    "node": "22.x"
+    "node": "22.22.2"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "postinstall": "npm rebuild better-sqlite3"
   },
   "dependencies": {
     "better-sqlite3": "^12.9.0",
