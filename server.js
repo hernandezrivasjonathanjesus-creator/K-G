@@ -14,14 +14,13 @@ app.use(express.static(__dirname));
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || '9163487748:AAHv_6Utv1p-1feY7p_oyAsqfYImfkpKb0U';
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
 
-// --- APAGADO LIMPIO DEL BOT (Soluciona el error 409 Conflict) ---
 process.on('SIGTERM', () => {
     console.log('Apagando servidor y deteniendo bot...');
     bot.stopPolling();
     process.exit(0);
 });
 
-// --- COMANDOS DEL BOT (Adaptados a Turso) ---
+// --- COMANDOS DEL BOT ---
 bot.onText(/\/start/, (msg) => {
   bot.sendMessage(msg.chat.id, "👋 ¡Hola! Soy el asistente de K&G.\n\nComandos:\n/deudas\n/cliente [nombre]\n/stock");
 });
@@ -71,16 +70,14 @@ bot.onText(/\/stock/, async (msg) => {
   } catch (e) { console.error(e); }
 });
 
-// --- RUTA PARA CARGAR EL CATÁLOGO (Usa batch para ser rápido) ---
+// --- RUTAS API ---
 app.get('/api/cargar-catalogo', async (req, res) => {
     try {
         await db.execute("DELETE FROM inventario WHERE empresa = 'FEMELY'");
-        
         const statements = productosFemely.map(p => ({
             sql: `INSERT INTO inventario (empresa, producto, categoria, distribuidor, precio, stock) VALUES (?, ?, ?, ?, ?, ?)`,
             args: ['FEMELY', p.n, p.c, 'FEMELY', p.p, 0]
         }));
-        
         await db.batch(statements, "write");
         res.send(`<h1>¡Éxito!</h1><p>Se cargaron ${productosFemely.length} productos en la base de datos de FEMELY.</p><p><a href="/">Volver al sistema</a></p>`);
     } catch (error) {
@@ -88,7 +85,6 @@ app.get('/api/cargar-catalogo', async (req, res) => {
     }
 });
 
-// --- LOGIN ---
 app.post('/api/login', async (req, res) => {
   const { empresa, password } = req.body;
   if (password === '1234' || password === '5678') return res.json({ ok: true, empresa });
@@ -114,7 +110,6 @@ app.post('/api/cambiar-clave', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- INVENTARIO ---
 app.get('/api/inventario/:empresa', async (req, res) => {
   try {
     const result = await db.execute({
@@ -154,7 +149,6 @@ app.delete('/api/inventario/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- COBRANZA ---
 app.get('/api/cobranza/:empresa', async (req, res) => {
   try {
     const result = await db.execute({
@@ -176,7 +170,6 @@ app.post('/api/cobranza', async (req, res) => {
     if (!item) return res.status(404).json({ error: 'Producto no encontrado' });
     if (item.stock < cantidad) return res.status(400).json({ error: 'Stock insuficiente' });
 
-    // Usamos un batch para hacer las dos operaciones a la vez de forma segura
     await db.batch([
       {
         sql: `INSERT INTO cobranza (empresa, cliente, producto, cantidad, precio_unitario, total) VALUES (?, ?, ?, ?, ?, ?)`,

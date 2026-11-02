@@ -3,6 +3,21 @@ let fuenteActual = 16;
 let ventaSeleccionadaId = null;
 let carrito = []; 
 
+// --- NUEVA FUNCIÓN PARA EVITAR EL ERROR DE SERVIDOR DORMIDO EN RENDER ---
+async function fetchConReintento(url, opciones = {}, intentos = 3) {
+    for (let i = 0; i < intentos; i++) {
+        try {
+            const res = await fetch(url, opciones);
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+            return res;
+        } catch (error) {
+            if (i === intentos - 1) throw error; // Si es el último intento, lanza el error
+            console.log(`Servidor dormido o sin conexión. Reintentando en 3 segundos... (Intento ${i + 1}/${intentos})`);
+            await new Promise(resolve => setTimeout(resolve, 3000)); // Espera 3 segundos
+        }
+    }
+}
+
 setInterval(() => {
     const clock = document.getElementById('clock');
     if (clock) clock.textContent = new Date().toLocaleString('es-VE');
@@ -19,7 +34,7 @@ function cerrarModalClave() { document.getElementById('modal-clave').classList.a
 async function guardarClave() {
     const nueva = document.getElementById('nueva-clave').value;
     if (nueva.length < 4) return alert('La contraseña debe tener al menos 4 caracteres.');
-    const res = await fetch('/api/cambiar-clave', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ empresa: empresaActual, nuevaClave: nueva }) });
+    const res = await fetchConReintento('/api/cambiar-clave', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ empresa: empresaActual, nuevaClave: nueva }) });
     if (res.ok) { alert('¡Contraseña actualizada!'); cerrarModalClave(); } else { alert('Error al guardar.'); }
 }
 
@@ -43,7 +58,7 @@ async function guardarEdicion() {
         precio: parseFloat(document.getElementById('edit-precio').value),
         stock: parseInt(document.getElementById('edit-stock').value)
     };
-    await fetch(`/api/inventario/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    await fetchConReintento(`/api/inventario/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     cerrarModalEditar();
     await cargarInventario();
 }
@@ -65,7 +80,7 @@ async function guardarAbono() {
 
     let primerId = Array.isArray(ventaSeleccionadaId) ? ventaSeleccionadaId[0] : ventaSeleccionadaId;
 
-    await fetch(`/api/cobranza/${primerId}/abono`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ abono: monto, referencia: referencia }) });
+    await fetchConReintento(`/api/cobranza/${primerId}/abono`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ abono: monto, referencia: referencia }) });
     cerrarModalAbono();
     await cargarCobranza();
 }
@@ -75,12 +90,17 @@ async function verificar() {
     const empresa = document.getElementById('empresa-select').value;
     const password = document.getElementById('pass').value;
     const errBox = document.getElementById('login-error');
-    errBox.textContent = '';
+    errBox.textContent = 'Conectando con el servidor...'; // Mensaje de espera
+    errBox.style.color = '#38bdf8'; // Color azul para avisar
 
     try {
-        const res = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ empresa, password }) });
+        const res = await fetchConReintento('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ empresa, password }) });
         const data = await res.json();
-        if (!data.ok) { errBox.textContent = data.msg || 'Error de acceso'; return; }
+        if (!data.ok) { 
+            errBox.textContent = data.msg || 'Error de acceso'; 
+            errBox.style.color = '#ef4444'; // Rojo para error
+            return; 
+        }
 
         empresaActual = empresa;
         document.getElementById('login-screen').classList.add('hidden');
@@ -90,19 +110,21 @@ async function verificar() {
         await cargarInventario();
         await cargarCobranza();
         await cargarBCV();
-    } catch (e) { errBox.textContent = 'Error de conexión'; }
+    } catch (e) { 
+        errBox.textContent = 'Error de conexión. El servidor está tardando en responder, intenta de nuevo.'; 
+        errBox.style.color = '#ef4444';
+    }
 }
 
-function verPestaña(tab) {
+function verPestana(tab) { // Corregido el nombre de la función (tenías verPestaña)
     document.getElementById('sec-inv').classList.toggle('hidden', tab !== 'inv');
     document.getElementById('sec-cob').classList.toggle('hidden', tab !== 'cob');
 }
 
-// --- INVENTARIO (CON PROTECCIÓN PARA NO BORRAR SI FALLA EL SERVIDOR) ---
+// --- INVENTARIO ---
 async function cargarInventario() {
     try {
-        const res = await fetch(`/api/inventario/${empresaActual}`);
-        if (!res.ok) throw new Error('Error en el servidor');
+        const res = await fetchConReintento(`/api/inventario/${empresaActual}`);
         const datos = await res.json();
         const tbody = document.querySelector('#t-inv tbody');
         tbody.innerHTML = '';
@@ -128,7 +150,6 @@ async function cargarInventario() {
             });
         }
 
-        // Llenar el select del carrito
         const sel = document.getElementById('cl');
         sel.innerHTML = '<option value="">¿Qué lleva?</option>';
         datos.filter(d => d.stock > 0).forEach(d => {
@@ -136,16 +157,15 @@ async function cargarInventario() {
         });
     } catch (error) {
         console.error("Error al cargar inventario:", error);
-        alert("⚠️ No se pudo conectar con el servidor. Tus datos están a salvo en la base de datos, pero no se pueden mostrar en este momento. Revisa tu conexión o espera a que el servidor despierte.");
+        alert("⚠️ No se pudo conectar con el servidor para cargar el inventario. Revisa tu conexión.");
     }
 }
 
-// --- FILTRO DE INVENTARIO (FALTABA ESTA FUNCIÓN) ---
+// --- FILTRO DE INVENTARIO ---
 async function filtrarInventario() {
     try {
         const categoriaSeleccionada = document.getElementById('filtro-categoria').value;
-        const res = await fetch(`/api/inventario/${empresaActual}`);
-        if (!res.ok) throw new Error('Error en el servidor');
+        const res = await fetchConReintento(`/api/inventario/${empresaActual}`);
         const datos = await res.json();
         const tbody = document.querySelector('#t-inv tbody');
         tbody.innerHTML = '';
@@ -183,7 +203,7 @@ async function filtrarInventario() {
 document.getElementById('f-inv').addEventListener('submit', async (e) => {
     e.preventDefault();
     const nuevoProducto = document.getElementById('in').value.trim().toLowerCase();
-    const res = await fetch(`/api/inventario/${empresaActual}`);
+    const res = await fetchConReintento(`/api/inventario/${empresaActual}`);
     const inventarioActual = await res.json();
     const existe = inventarioActual.some(p => p.producto.toLowerCase() === nuevoProducto);
     
@@ -191,7 +211,7 @@ document.getElementById('f-inv').addEventListener('submit', async (e) => {
         return alert(`⚠️ ¡ERROR! El producto "${document.getElementById('in').value.trim()}" ya existe en tu inventario.`);
     }
 
-    await fetch('/api/inventario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+    await fetchConReintento('/api/inventario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
         empresa: empresaActual, 
         producto: document.getElementById('in').value.trim(), 
         categoria: document.getElementById('icat').value.trim(),
@@ -204,7 +224,10 @@ document.getElementById('f-inv').addEventListener('submit', async (e) => {
 });
 
 async function eliminarInv(id) {
-    if (confirm('¿Eliminar producto?')) { await fetch(`/api/inventario/${id}`, { method: 'DELETE' }); await cargarInventario(); }
+    if (confirm('¿Eliminar producto?')) { 
+        await fetchConReintento(`/api/inventario/${id}`, { method: 'DELETE' }); 
+        await cargarInventario(); 
+    }
 }
 
 // --- CARRITO DE COMPRAS ---
@@ -262,7 +285,7 @@ async function registrarVentaCarrito() {
     if (carrito.length === 0) return alert("El carrito está vacío.");
 
     for (let item of carrito) {
-        await fetch('/api/cobranza', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        await fetchConReintento('/api/cobranza', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
             empresa: empresaActual, 
             cliente: cliente, 
             producto: item.productoId, 
@@ -281,11 +304,10 @@ async function registrarVentaCarrito() {
     await cargarCobranza();
 }
 
-// --- COBRANZA Y GANANCIAS (CON PROTECCIÓN Y BOTONES NUEVOS) ---
+// --- COBRANZA Y GANANCIAS ---
 async function cargarCobranza() {
     try {
-        const res = await fetch(`/api/cobranza/${empresaActual}`);
-        if (!res.ok) throw new Error('Error en el servidor');
+        const res = await fetchConReintento(`/api/cobranza/${empresaActual}`);
         const datos = await res.json();
         const tbody = document.querySelector('#t-cob tbody');
         tbody.innerHTML = '';
@@ -330,7 +352,6 @@ async function cargarCobranza() {
                 const botonAgregar = `<button onclick="agregarMasProductos('${c.nombreReal}')" style="background:#10b981; color:white; margin-right:5px; margin-bottom:5px;">➕ Agregar</button>`;
                 const botonNota = `<button onclick="generarNotaCliente('${c.nombreReal}')" style="background:#38bdf8; color:#0f172a; margin-right:5px; margin-bottom:5px;">🖨️ Nota</button>`;
                 
-                // NUEVOS BOTONES PARA EDITAR Y ELIMINAR
                 const botonEditarDeuda = `<button onclick="editarDeudaCliente('${c.nombreReal}')" style="background:#8b5cf6; color:white; margin-right:5px; margin-bottom:5px;">✏️ Editar</button>`;
                 const botonEliminarDeuda = `<button onclick="eliminarDeudaCliente('${c.nombreReal}')" style="background:#ef4444; color:white; margin-right:5px; margin-bottom:5px;">🗑️ Quitar</button>`;
 
@@ -353,17 +374,17 @@ async function cargarCobranza() {
         document.getElementById('ganancia-deuda').textContent = `$${(totalVentas - totalCobrado).toFixed(2)}`;
     } catch (error) {
         console.error("Error al cargar cobranza:", error);
-        alert("⚠️ No se pudo conectar con el servidor para cargar las deudas. Tus datos están seguros en la base de datos.");
+        // Aquí ya no lanzamos el alert molesto, porque el fetchConReintento ya lo intentó 3 veces.
+        document.querySelector('#t-cob tbody').innerHTML = `<tr><td colspan="7" style="text-align:center; color: #ef4444;">⚠️ Error de conexión. Presiona F5 para recargar.</td></tr>`;
     }
 }
 
-// --- FUNCIONES NUEVAS PARA EDITAR Y ELIMINAR CLIENTES ---
+// --- FUNCIONES PARA EDITAR Y ELIMINAR CLIENTES ---
 async function eliminarDeudaCliente(nombreCliente) {
-    if (!confirm(`¿Estás seguro de que quieres eliminar TODA la deuda de ${nombreCliente}? Esta acción borrará sus registros y devolverá el stock si es necesario.`)) return;
+    if (!confirm(`¿Estás seguro de que quieres eliminar TODA la deuda de ${nombreCliente}? Esta acción borrará sus registros y devolverá el stock.`)) return;
 
     try {
-        // NOTA: Debes tener esta ruta en tu backend (Node.js/Python) para que funcione.
-        const res = await fetch(`/api/cobranza/cliente/${empresaActual}/${nombreCliente}`, { method: 'DELETE' });
+        const res = await fetchConReintento(`/api/cobranza/cliente/${empresaActual}/${nombreCliente}`, { method: 'DELETE' });
         if (res.ok) {
             alert('Deuda eliminada correctamente.');
             await cargarCobranza();
@@ -377,12 +398,9 @@ async function eliminarDeudaCliente(nombreCliente) {
 }
 
 function editarDeudaCliente(nombreCliente) {
-    // Para editar productos individuales, lo ideal es abrir un modal.
-    // Por ahora, te mostramos un mensaje explicativo.
     alert(`Para editar la deuda de ${nombreCliente}:\n\n1. Si quieres quitar un producto específico, usa el botón "🗑️ Quitar" (esto borra toda la deuda del cliente).\n2. Si quieres agregar más productos, usa "➕ Agregar".\n3. Si quieres modificar un precio, contacta al administrador.`);
 }
 
-// FUNCIÓN PARA AUTOCOMPLETAR EL NOMBRE Y AGREGAR MÁS PRODUCTOS
 function agregarMasProductos(nombreCliente) {
     document.getElementById('cn').value = nombreCliente;
     document.getElementById('cc').value = 1;
@@ -393,7 +411,7 @@ function agregarMasProductos(nombreCliente) {
 // --- TASA DEL BCV ---
 async function cargarBCV() {
     try {
-        const res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+        const res = await fetchConReintento('https://ve.dolarapi.com/v1/dolares/oficial');
         const data = await res.json();
         document.getElementById('bcv-val').textContent = Number(data.promedio).toFixed(2) + ' Bs';
     } catch { document.getElementById('bcv-val').textContent = 'N/D'; }
@@ -405,7 +423,7 @@ async function generarNotaCliente(nombreCliente) {
     let tasa = parseFloat(tasaTexto);
     if (isNaN(tasa) || tasa <= 0) tasa = 1;
 
-    const res = await fetch(`/api/cobranza/${empresaActual}`);
+    const res = await fetchConReintento(`/api/cobranza/${empresaActual}`);
     const todasLasVentas = await res.json();
     const ventasCliente = todasLasVentas.filter(v => v.cliente.toLowerCase() === nombreCliente.toLowerCase());
 
