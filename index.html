@@ -55,10 +55,10 @@
             <h2>Editar Producto</h2>
             <input type="hidden" id="edit-id">
             <input type="text" id="edit-prod" placeholder="Producto" required>
-            <input type="text" id="edit-cat" placeholder="Categoría (ej. Maquillaje)">
+            <input type="text" id="edit-cat" placeholder="Categoría">
             <input type="text" id="edit-dist" placeholder="Distribuidor">
             <input type="number" id="edit-precio" placeholder="Precio $" step="0.01" required>
-            <input type="number" id="edit-stock" placeholder="Cantidad" min="1" required>
+            <input type="number" id="edit-stock" placeholder="Cantidad" min="0" required>
             <button onclick="guardarEdicion()">Guardar Cambios</button>
             <button onclick="cerrarModalEditar()" style="background: #ef4444; color: white; margin-top: 10px;">Cancelar</button>
         </div>
@@ -151,21 +151,68 @@
                     <h3>Cargar Stock</h3>
                     <form id="f-inv" class="form-grid">
                         <input type="text" id="in" placeholder="Producto" required>
-                        <input type="text" id="icat" placeholder="Categoría (ej. Maquillaje)">
+                        
+                        <!-- Lista de categorías para autocompletar -->
+                        <input type="text" id="icat" placeholder="Categoría (ej. Labiales)" list="lista-categorias">
+                        <datalist id="lista-categorias">
+                            <option value="Fancy Boy"></option>
+                            <option value="For Men"></option>
+                            <option value="Edición Especial"></option>
+                            <option value="Perfumes"></option>
+                            <option value="Ozono"></option>
+                            <option value="Facial"></option>
+                            <option value="Labiales"></option>
+                            <option value="Rostro - Bases"></option>
+                            <option value="Rostro - Polvos"></option>
+                            <option value="Rostro - Blush"></option>
+                            <option value="Rostro - Trios"></option>
+                            <option value="Rostro - Contornos e Iluminadores"></option>
+                            <option value="Ojos"></option>
+                            <option value="Capilar"></option>
+                            <option value="Higiene"></option>
+                            <option value="Fashion Girl"></option>
+                            <option value="Corporal"></option>
+                            <option value="Queratina"></option>
+                            <option value="Oliva"></option>
+                            <option value="Rosa Mosqueta"></option>
+                            <option value="Nanny"></option>
+                            <option value="Terapéutica"></option>
+                            <option value="General"></option>
+                        </datalist>
+
                         <input type="text" id="id" placeholder="Distribuidor">
                         <input type="number" id="ip" placeholder="Precio $" step="0.01" required>
-                        <input type="number" id="ic" placeholder="Cantidad" min="1" required>
+                        <input type="number" id="ic" placeholder="Cantidad" min="0" required>
                         <button type="submit">Guardar</button>
                     </form>
 
-                    <!-- AQUI ESTA EL FILTRO DE CATEGORIA -->
-                    <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                    <!-- FILTRO DE CATEGORIA ACTUALIZADO CON TODAS LAS LINEAS -->
+                    <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                         <label style="font-weight: bold; color: var(--primary);">Filtrar por Categoría:</label>
                         <select id="filtro-categoria" onchange="filtrarInventario()" style="padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text-main); width: 100%; max-width: 300px;">
                             <option value="Todas">Todas las categorías</option>
-                            <option value="Maquillaje">Maquillaje</option>
-                            <option value="Cabello">Cabello</option>
-                            <option value="Cuidado Personal">Cuidado Personal</option>
+                            <option value="Fancy Boy">Línea Fancy Boy</option>
+                            <option value="For Men">Línea For Men</option>
+                            <option value="Edición Especial">Línea Edición Especial</option>
+                            <option value="Perfumes">Línea Perfumes</option>
+                            <option value="Ozono">Línea Ozono</option>
+                            <option value="Facial">Línea Facial</option>
+                            <option value="Labiales">Línea Labiales</option>
+                            <option value="Rostro - Bases">Línea Rostro - Bases</option>
+                            <option value="Rostro - Polvos">Línea Rostro - Polvos</option>
+                            <option value="Rostro - Blush">Línea Rostro - Blush</option>
+                            <option value="Rostro - Trios">Línea Rostro - Trios</option>
+                            <option value="Rostro - Contornos e Iluminadores">Rostro - Contornos</option>
+                            <option value="Ojos">Línea Ojos</option>
+                            <option value="Capilar">Línea Capilar</option>
+                            <option value="Higiene">Línea Higiene</option>
+                            <option value="Fashion Girl">Línea Fashion Girl</option>
+                            <option value="Corporal">Línea Corporal</option>
+                            <option value="Queratina">Línea Queratina</option>
+                            <option value="Oliva">Línea Oliva</option>
+                            <option value="Rosa Mosqueta">Línea Rosa Mosqueta</option>
+                            <option value="Nanny">Línea Nanny</option>
+                            <option value="Terapéutica">Línea Terapéutica</option>
                             <option value="General">General</option>
                         </select>
                     </div>

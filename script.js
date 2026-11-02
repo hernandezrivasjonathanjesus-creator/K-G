@@ -116,7 +116,7 @@ async function verificar() {
     }
 }
 
-function verPestana(tab) { // Corregido el nombre de la función (tenías verPestaña)
+function verPestana(tab) {
     document.getElementById('sec-inv').classList.toggle('hidden', tab !== 'inv');
     document.getElementById('sec-cob').classList.toggle('hidden', tab !== 'cob');
 }
@@ -161,7 +161,7 @@ async function cargarInventario() {
     }
 }
 
-// --- FILTRO DE INVENTARIO ---
+// --- FILTRO DE INVENTARIO MEJORADO ---
 async function filtrarInventario() {
     try {
         const categoriaSeleccionada = document.getElementById('filtro-categoria').value;
@@ -170,9 +170,14 @@ async function filtrarInventario() {
         const tbody = document.querySelector('#t-inv tbody');
         tbody.innerHTML = '';
 
+        // Filtro inteligente: Busca si el texto del filtro está dentro de la categoría del producto
         const filtrados = categoriaSeleccionada === 'Todas' 
             ? datos 
-            : datos.filter(d => (d.categoria || 'General').toLowerCase() === categoriaSeleccionada.toLowerCase());
+            : datos.filter(d => {
+                const catProducto = (d.categoria || 'General').toLowerCase();
+                const catFiltro = categoriaSeleccionada.toLowerCase();
+                return catProducto.includes(catFiltro);
+            });
 
         if (filtrados.length === 0) {
             tbody.innerHTML = `<tr><td colspan="6" style="text-align:center">No hay productos en esta categoría</td></tr>`;
@@ -374,7 +379,6 @@ async function cargarCobranza() {
         document.getElementById('ganancia-deuda').textContent = `$${(totalVentas - totalCobrado).toFixed(2)}`;
     } catch (error) {
         console.error("Error al cargar cobranza:", error);
-        // Aquí ya no lanzamos el alert molesto, porque el fetchConReintento ya lo intentó 3 veces.
         document.querySelector('#t-cob tbody').innerHTML = `<tr><td colspan="7" style="text-align:center; color: #ef4444;">⚠️ Error de conexión. Presiona F5 para recargar.</td></tr>`;
     }
 }
