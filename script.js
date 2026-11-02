@@ -118,12 +118,26 @@ async function cargarInventario() {
     const sel = document.getElementById('cl');
     sel.innerHTML = '<option value="">¿Qué lleva?</option>';
     datos.filter(d => d.stock > 0).forEach(d => {
-        sel.innerHTML += `<option value="${d.id}" data-precio="${d.precio}" data-stock="${d.stock}">${d.producto} — $${Number(d.precio).toFixed(2)} (Stock: ${d.stock})</option>`;
+        sel.innerHTML += `<option value="${d.id}" data-precio="${d.precio}" data-stock="${d.stock}" data-nombre="${d.producto}">${d.producto} — $${Number(d.precio).toFixed(2)} (Stock: ${d.stock})</option>`;
     });
 }
 
+// VALIDACIÓN DE PRODUCTO DUPLICADO AL GUARDAR EN INVENTARIO
 document.getElementById('f-inv').addEventListener('submit', async (e) => {
     e.preventDefault();
+    
+    const nuevoProducto = document.getElementById('in').value.trim().toLowerCase();
+    
+    // Obtenemos los productos actuales para verificar si ya existe
+    const res = await fetch(`/api/inventario/${empresaActual}`);
+    const inventarioActual = await res.json();
+    
+    const existe = inventarioActual.some(p => p.producto.toLowerCase() === nuevoProducto);
+    
+    if (existe) {
+        return alert(`⚠️ ¡ERROR! El producto "${document.getElementById('in').value.trim()}" ya existe en tu inventario.`);
+    }
+
     await fetch('/api/inventario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
         empresa: empresaActual, producto: document.getElementById('in').value.trim(), distribuidor: document.getElementById('id').value.trim(),
         precio: parseFloat(document.getElementById('ip').value), stock: parseInt(document.getElementById('ic').value)
@@ -169,7 +183,6 @@ async function cargarCobranza() {
         `;
     });
 
-    // Actualizar el cuadro de ganancias
     document.getElementById('ganancia-ventas').textContent = `$${totalVentas.toFixed(2)}`;
     document.getElementById('ganancia-cobrado').textContent = `$${totalCobrado.toFixed(2)}`;
     document.getElementById('ganancia-deuda').textContent = `$${(totalVentas - totalCobrado).toFixed(2)}`;
@@ -204,4 +217,113 @@ async function cargarBCV() {
         const data = await res.json();
         document.getElementById('bcv-val').textContent = Number(data.promedio).toFixed(2) + ' Bs';
     } catch { document.getElementById('bcv-val').textContent = 'N/D'; }
+}
+
+// --- FUNCIÓN NUEVA: GENERAR NOTA CON TASA, PAGO MÓVIL Y LOGO ---
+async function generarNotaCliente() {
+    // 1. Preguntamos la tasa
+    let tasaStr = prompt("Ingrese la tasa del día para calcular los Bolívares (Bs/USD):");
+    if (!tasaStr) return; 
+    let tasa = parseFloat(tasaStr);
+    if (isNaN(tasa) || tasa <= 0) {
+        alert("Por favor, ingrese una tasa válida.");
+        return;
+    }
+
+    // 2. Traemos los productos para simular la nota. 
+    // Como el sistema actual registra deuda de 1 producto a la vez, aquí pedimos los datos.
+    const sel = document.getElementById('cl');
+    const opt = sel.options[sel.selectedIndex];
+    
+    if (!opt || !opt.value) {
+        return alert("Por favor, seleccione un producto en la lista de '¿Qué lleva?' para armar la nota.");
+    }
+
+    let cantidad = prompt(`¿Cuántas unidades de "${opt.dataset.nombre}" va a llevar en esta nota?`, "1");
+    if (!cantidad || isNaN(cantidad) || cantidad <= 0) return;
+    cantidad = parseInt(cantidad);
+
+    let precioUSD = parseFloat(opt.dataset.precio);
+    let totalUSD = precioUSD * cantidad;
+    let totalBs = totalUSD * tasa;
+
+    // 3. Armamos el HTML de la nota con el logo, los datos y el pago móvil de Fanielis
+    let notaHTML = `
+        <html>
+        <head>
+            <title>Nota de Entrega - K&G</title>
+            <style>
+                body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #333; }
+                .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #38bdf8; padding-bottom: 20px; }
+                .header img { width: 150px; object-fit: contain; margin-bottom: 10px; }
+                .header h2 { margin: 0; color: #0f172a; }
+                .info { margin-bottom: 30px; font-size: 16px; line-height: 1.6; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                th, td { border: 1px solid #cbd5e1; padding: 12px; font-size: 15px; text-align: left; }
+                th { background-color: #f1f5f9; color: #0f172a; }
+                .totales { text-align: right; font-size: 18px; margin-bottom: 40px; }
+                .totales h3 { margin: 5px 0; color: #16a34a; }
+                .totales h4 { margin: 5px 0; color: #64748b; }
+                .pago-movil { border: 2px dashed #38bdf8; padding: 20px; background: #f8fafc; width: 350px; border-radius: 8px; }
+                .pago-movil h4 { margin-top: 0; color: #0f172a; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; }
+                .pago-movil p { margin: 8px 0; font-size: 15px; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <!-- LOGO DE LA EMPRESA -->
+                <img src="/LOGO.png" alt="Logo K&G">
+                <h2>NOTA DE ENTREGA</h2>
+                <p style="margin: 5px 0 0 0; color: #64748b;">Empresa: ${empresaActual}</p>
+            </div>
+            
+            <div class="info">
+                <p><strong>Fecha:</strong> ${new Date().toLocaleString('es-VE')}</p>
+                <p><strong>Tasa aplicada:</strong> ${tasa.toFixed(2)} Bs/USD</p>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th style="text-align:center;">Cant.</th>
+                        <th style="text-align:right;">Precio USD</th>
+                        <th style="text-align:right;">Subtotal USD</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>${opt.dataset.nombre}</td>
+                        <td style="text-align:center;">${cantidad}</td>
+                        <td style="text-align:right;">$${precioUSD.toFixed(2)}</td>
+                        <td style="text-align:right;">$${totalUSD.toFixed(2)}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="totales">
+                <h3>Total en Dólares: $${totalUSD.toFixed(2)}</h3>
+                <h4>Total en Bolívares: Bs. ${totalBs.toFixed(2)}</h4>
+            </div>
+
+            <div class="pago-movil">
+                <h4>Datos para Pago Móvil</h4>
+                <p><strong>Titular:</strong> Fanielis Sánchez</p>
+                <p><strong>C.I:</strong> V-16.438.319</p>
+                <p><strong>Banco:</strong> Banesco</p>
+                <p><strong>Teléfono:</strong> (Por favor, agrega el teléfono aquí en el código si lo necesitas)</p>
+            </div>
+        </body>
+        </html>
+    `;
+
+    // 4. Abrimos ventana para imprimir
+    let ventana = window.open('', '_blank');
+    ventana.document.write(notaHTML);
+    ventana.document.close();
+    ventana.focus();
+    
+    setTimeout(() => {
+        ventana.print();
+    }, 1000); 
 }

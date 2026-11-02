@@ -134,6 +134,12 @@
                         <input type="number" id="cc" placeholder="Cant." min="1" value="1" required>
                         <button type="submit">Registrar Deuda</button>
                     </form>
+                    
+                    <!-- BOTÓN NUEVO PARA GENERAR LA NOTA -->
+                    <div style="margin: 15px 0; text-align: right;">
+                        <button onclick="generarNotaCliente()" style="background: #f59e0b; color: white; padding: 10px 20px; font-weight: bold;">🖨️ Generar Nota de Entrega (USD)</button>
+                    </div>
+
                     <div class="scroll">
                         <table id="t-cob">
                             <thead><tr><th>Cliente</th><th>Producto</th><th>Total $</th><th>Abonado</th><th>Resta</th><th>Referencia</th><th>Acción</th></tr></thead>
